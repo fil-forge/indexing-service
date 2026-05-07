@@ -3,10 +3,10 @@ package remotesyncer
 import (
 	"context"
 
+	"github.com/fil-forge/go-libstoracha/ipnipublisher/store"
+	"github.com/fil-forge/indexing-service/pkg/types"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/ipld/go-ipld-prime"
-	"github.com/storacha/go-libstoracha/ipnipublisher/store"
-	"github.com/storacha/indexing-service/pkg/types"
 )
 
 type Store interface {

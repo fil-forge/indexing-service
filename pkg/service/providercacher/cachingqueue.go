@@ -3,9 +3,9 @@ package providercacher
 import (
 	"context"
 
+	"github.com/fil-forge/go-libstoracha/blobindex"
+	"github.com/fil-forge/go-libstoracha/queuepoller"
 	"github.com/ipni/go-libipni/find/model"
-	"github.com/storacha/go-libstoracha/blobindex"
-	"github.com/storacha/go-libstoracha/queuepoller"
 )
 
 type (

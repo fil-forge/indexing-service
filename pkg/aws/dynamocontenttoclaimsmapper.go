@@ -9,10 +9,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/fil-forge/go-libstoracha/digestutil"
+	"github.com/fil-forge/indexing-service/pkg/types"
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
-	"github.com/storacha/go-libstoracha/digestutil"
-	"github.com/storacha/indexing-service/pkg/types"
 )
 
 // DynamoContentToClaimsMapper uses a DynamoDB table to map content hashes to the corresponding claims

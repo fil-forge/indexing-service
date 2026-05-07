@@ -12,9 +12,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
-	"github.com/storacha/go-libstoracha/digestutil"
-	"github.com/storacha/go-libstoracha/testutil"
-	"github.com/storacha/indexing-service/pkg/internal/link"
+	"github.com/fil-forge/go-libstoracha/digestutil"
+	"github.com/fil-forge/go-libstoracha/testutil"
+	"github.com/fil-forge/indexing-service/pkg/internal/link"
 	"github.com/stretchr/testify/require"
 )
 

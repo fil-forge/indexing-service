@@ -25,8 +25,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/fil-forge/go-libstoracha/metadata"
 	"github.com/multiformats/go-multicodec"
-	"github.com/storacha/go-libstoracha/metadata"
 )
 
 var protos = map[multicodec.Code]string{

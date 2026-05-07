@@ -5,10 +5,10 @@ import (
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/fil-forge/go-libstoracha/ipnipublisher/notifier"
+	"github.com/fil-forge/indexing-service/cmd/lambda"
+	"github.com/fil-forge/indexing-service/pkg/aws"
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/storacha/go-libstoracha/ipnipublisher/notifier"
-	"github.com/storacha/indexing-service/cmd/lambda"
-	"github.com/storacha/indexing-service/pkg/aws"
 )
 
 var log = logging.Logger("lambda/notifier")

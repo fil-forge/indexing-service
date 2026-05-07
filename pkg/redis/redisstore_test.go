@@ -12,10 +12,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fil-forge/go-libstoracha/testutil"
+	"github.com/fil-forge/indexing-service/pkg/redis"
+	"github.com/fil-forge/indexing-service/pkg/types"
 	goredis "github.com/redis/go-redis/v9"
-	"github.com/storacha/go-libstoracha/testutil"
-	"github.com/storacha/indexing-service/pkg/redis"
-	"github.com/storacha/indexing-service/pkg/types"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	valkey "github.com/testcontainers/testcontainers-go/modules/valkey"

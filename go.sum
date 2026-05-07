@@ -188,6 +188,10 @@ github.com/envoyproxy/protoc-gen-validate v0.1.0/go.mod h1:iSmxcyjqTsJpI2R4NaDN7
 github.com/fatih/color v1.7.0/go.mod h1:Zm6kSWBoL9eyXnKyktHP6abPY2pDugNf5KwzbycvMj4=
 github.com/felixge/httpsnoop v1.0.4 h1:NFTV2Zj1bL4mc9sqWACXbQFVBBg2W3GPvqp8/ESS2Wg=
 github.com/felixge/httpsnoop v1.0.4/go.mod h1:m8KPJKqk1gH5J9DgRY2ASl2lWCfGKXixSwevea8zH2U=
+github.com/fil-forge/go-libstoracha v0.0.0-20260507180245-218ac18ff773 h1:MUBpVnBX9Eql6rBV/f6xKDz/Wm0zICsrcIWWGNH5XeM=
+github.com/fil-forge/go-libstoracha v0.0.0-20260507180245-218ac18ff773/go.mod h1:zE7vPrAYZpoamvIFOtcZvfrWXRi6jyvS5O4o04+X1HE=
+github.com/fil-forge/go-ucanto v0.0.0-20260507172450-5cb5d073f8ab h1:2J2cDThqTKP6/0k3SfdlSxfyPa3aLqjTYnmvbEcryfg=
+github.com/fil-forge/go-ucanto v0.0.0-20260507172450-5cb5d073f8ab/go.mod h1:lZF3UXZ2hGLKYmXdquG50JqI9pRlUrV6lubGtgOYfwc=
 github.com/filecoin-project/go-clock v0.1.0 h1:SFbYIM75M8NnFm1yMHhN9Ahy3W5bEZV9gd6MPfXbKVU=
 github.com/filecoin-project/go-clock v0.1.0/go.mod h1:4uB/O4PvOjlx1VCMdZ9MyDZXRm//gkj1ELEbxfI1AZs=
 github.com/filecoin-project/go-data-segment v0.0.1 h1:1wmDxOG4ubWQm3ZC1XI5nCon5qgSq7Ra3Rb6Dbu10Gs=
@@ -664,10 +668,6 @@ github.com/spf13/cobra v1.2.1/go.mod h1:ExllRjgxM/piMAM+3tAZvg8fsklGAf3tPfi+i8t6
 github.com/spf13/jwalterweatherman v1.1.0/go.mod h1:aNWZUN0dPAAO/Ljvb5BEdw96iTZ0EXowPYD95IqWIGo=
 github.com/spf13/pflag v1.0.5/go.mod h1:McXfInJRrz4CZXVZOBLb0bTZqETkiAhM9Iw0y3An2Bg=
 github.com/spf13/viper v1.8.1/go.mod h1:o0Pch8wJ9BVSWGQMbra6iw0oQ5oktSIBaujf1rJH9Ns=
-github.com/storacha/go-libstoracha v0.7.6 h1:5EeyQx07pKLoo1ZoNyxEyQEsR75bBUybx+anPDVELuk=
-github.com/storacha/go-libstoracha v0.7.6/go.mod h1:hlsYlcLIwMnmoHoPOZS7cAJxujRCyYUgToCuQ8gnNVI=
-github.com/storacha/go-ucanto v0.7.2-0.20251119232529-559b0a57d38f h1:WvlIwpfk/sCu9tF2+ILIiZ9uZfDd1uHXG656qMrlmnY=
-github.com/storacha/go-ucanto v0.7.2-0.20251119232529-559b0a57d38f/go.mod h1:DZlWyzuSkXk3phAuJpGDyhxYWpJogW1RFqp/VfldT64=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/objx v0.4.0/go.mod h1:YvHI0jy2hoMjB+UWwv71VJQ9isScKT/TqJzVSSt89Yw=
 github.com/stretchr/objx v0.5.2 h1:xuMeJ0Sdp5ZMRXx/aWO6RZxdr3beISkG5/G/aIRr3pY=

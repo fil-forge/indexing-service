@@ -6,9 +6,9 @@ import (
 	"encoding/binary"
 	"errors"
 
+	"github.com/fil-forge/indexing-service/pkg/types"
 	"github.com/multiformats/go-multicodec"
 	multihash "github.com/multiformats/go-multihash"
-	"github.com/storacha/indexing-service/pkg/types"
 )
 
 var (

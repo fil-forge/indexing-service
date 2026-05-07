@@ -1,9 +1,9 @@
 package contentclaims
 
 import (
-	"github.com/storacha/go-ucanto/principal"
-	"github.com/storacha/go-ucanto/server"
-	"github.com/storacha/indexing-service/pkg/types"
+	"github.com/fil-forge/go-ucanto/principal"
+	"github.com/fil-forge/go-ucanto/server"
+	"github.com/fil-forge/indexing-service/pkg/types"
 )
 
 func NewUCANServer(id principal.Signer, service types.Publisher, options ...server.Option) (server.ServerView[server.Service], error) {

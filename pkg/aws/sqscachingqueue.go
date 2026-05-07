@@ -11,11 +11,11 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
+	"github.com/fil-forge/go-libstoracha/blobindex"
+	"github.com/fil-forge/go-libstoracha/queuepoller"
+	"github.com/fil-forge/indexing-service/pkg/service/providercacher"
 	"github.com/google/uuid"
 	"github.com/ipni/go-libipni/find/model"
-	"github.com/storacha/go-libstoracha/blobindex"
-	"github.com/storacha/go-libstoracha/queuepoller"
-	"github.com/storacha/indexing-service/pkg/service/providercacher"
 )
 
 // cachingQueueMessage is the struct that is serialized onto an SQS message queue in JSON

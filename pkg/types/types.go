@@ -7,17 +7,17 @@ import (
 	"fmt"
 	"net/url"
 
+	"github.com/fil-forge/go-libstoracha/blobindex"
+	"github.com/fil-forge/go-libstoracha/metadata"
+	"github.com/fil-forge/go-ucanto/core/delegation"
+	"github.com/fil-forge/go-ucanto/core/ipld"
+	"github.com/fil-forge/go-ucanto/did"
+	"github.com/fil-forge/go-ucanto/ucan"
 	"github.com/ipfs/go-cid"
 	"github.com/ipni/go-libipni/find/model"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multicodec"
 	mh "github.com/multiformats/go-multihash"
-	"github.com/storacha/go-libstoracha/blobindex"
-	"github.com/storacha/go-libstoracha/metadata"
-	"github.com/storacha/go-ucanto/core/delegation"
-	"github.com/storacha/go-ucanto/core/ipld"
-	"github.com/storacha/go-ucanto/did"
-	"github.com/storacha/go-ucanto/ucan"
 )
 
 // ContextID describes the data used to calculate a context id for IPNI

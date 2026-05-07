@@ -7,8 +7,8 @@ package providercacher
 import (
 	"context"
 
+	"github.com/fil-forge/go-libstoracha/blobindex"
 	"github.com/ipni/go-libipni/find/model"
-	"github.com/storacha/go-libstoracha/blobindex"
 	mock "github.com/stretchr/testify/mock"
 )
 

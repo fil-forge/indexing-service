@@ -11,6 +11,13 @@ import (
 	"os"
 	"time"
 
+	"github.com/fil-forge/go-libstoracha/principalresolver"
+	"github.com/fil-forge/go-ucanto/did"
+	"github.com/fil-forge/go-ucanto/principal"
+	ed25519 "github.com/fil-forge/go-ucanto/principal/ed25519/signer"
+	"github.com/fil-forge/go-ucanto/principal/signer"
+	userver "github.com/fil-forge/go-ucanto/server"
+	"github.com/fil-forge/go-ucanto/validator"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/ipni/go-libipni/maurl"
 	"github.com/ipni/go-libipni/metadata"
@@ -18,19 +25,12 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
 	goredis "github.com/redis/go-redis/v9"
-	"github.com/storacha/go-libstoracha/principalresolver"
-	"github.com/storacha/go-ucanto/did"
-	"github.com/storacha/go-ucanto/principal"
-	ed25519 "github.com/storacha/go-ucanto/principal/ed25519/signer"
-	"github.com/storacha/go-ucanto/principal/signer"
-	userver "github.com/storacha/go-ucanto/server"
-	"github.com/storacha/go-ucanto/validator"
 	"github.com/urfave/cli/v2"
 
-	"github.com/storacha/indexing-service/pkg/construct"
-	"github.com/storacha/indexing-service/pkg/presets"
-	"github.com/storacha/indexing-service/pkg/redis"
-	"github.com/storacha/indexing-service/pkg/server"
+	"github.com/fil-forge/indexing-service/pkg/construct"
+	"github.com/fil-forge/indexing-service/pkg/presets"
+	"github.com/fil-forge/indexing-service/pkg/redis"
+	"github.com/fil-forge/indexing-service/pkg/server"
 )
 
 var serverCmd = &cli.Command{

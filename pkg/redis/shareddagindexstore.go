@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"io"
 
-	"github.com/storacha/go-libstoracha/blobindex"
-	"github.com/storacha/indexing-service/pkg/types"
+	"github.com/fil-forge/go-libstoracha/blobindex"
+	"github.com/fil-forge/indexing-service/pkg/types"
 )
 
 var (

@@ -4,11 +4,11 @@ import (
 	"fmt"
 
 	"github.com/awslabs/aws-lambda-go-api-proxy/httpadapter"
-	ucanserver "github.com/storacha/go-ucanto/server"
-	"github.com/storacha/indexing-service/cmd/lambda"
-	"github.com/storacha/indexing-service/pkg/aws"
-	"github.com/storacha/indexing-service/pkg/principalresolver"
-	"github.com/storacha/indexing-service/pkg/server"
+	ucanserver "github.com/fil-forge/go-ucanto/server"
+	"github.com/fil-forge/indexing-service/cmd/lambda"
+	"github.com/fil-forge/indexing-service/pkg/aws"
+	"github.com/fil-forge/indexing-service/pkg/principalresolver"
+	"github.com/fil-forge/indexing-service/pkg/server"
 )
 
 func main() {

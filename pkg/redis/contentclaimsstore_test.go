@@ -6,14 +6,14 @@ import (
 	"net/url"
 	"testing"
 
+	cassert "github.com/fil-forge/go-libstoracha/capabilities/assert"
+	ctypes "github.com/fil-forge/go-libstoracha/capabilities/types"
+	"github.com/fil-forge/go-libstoracha/testutil"
+	"github.com/fil-forge/go-ucanto/core/delegation"
+	"github.com/fil-forge/go-ucanto/ucan"
+	"github.com/fil-forge/indexing-service/pkg/redis"
 	cid "github.com/ipfs/go-cid"
 	mh "github.com/multiformats/go-multihash"
-	cassert "github.com/storacha/go-libstoracha/capabilities/assert"
-	ctypes "github.com/storacha/go-libstoracha/capabilities/types"
-	"github.com/storacha/go-libstoracha/testutil"
-	"github.com/storacha/go-ucanto/core/delegation"
-	"github.com/storacha/go-ucanto/ucan"
-	"github.com/storacha/indexing-service/pkg/redis"
 	"github.com/stretchr/testify/require"
 )
 

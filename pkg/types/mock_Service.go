@@ -7,9 +7,9 @@ package types
 import (
 	"context"
 
+	"github.com/fil-forge/go-ucanto/core/delegation"
+	"github.com/fil-forge/go-ucanto/core/ipld"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/storacha/go-ucanto/core/delegation"
-	"github.com/storacha/go-ucanto/core/ipld"
 	mock "github.com/stretchr/testify/mock"
 )
 

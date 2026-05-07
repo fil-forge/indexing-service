@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/storacha/go-libstoracha/testutil"
-	"github.com/storacha/indexing-service/pkg/redis"
-	"github.com/storacha/indexing-service/pkg/types"
+	"github.com/fil-forge/go-libstoracha/testutil"
+	"github.com/fil-forge/indexing-service/pkg/redis"
+	"github.com/fil-forge/indexing-service/pkg/types"
 	"github.com/stretchr/testify/require"
 )
 

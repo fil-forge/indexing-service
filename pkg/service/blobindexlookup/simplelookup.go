@@ -8,16 +8,16 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/fil-forge/go-libstoracha/blobindex"
+	rclient "github.com/fil-forge/go-ucanto/client/retrieval"
+	"github.com/fil-forge/go-ucanto/core/dag/blockstore"
+	"github.com/fil-forge/go-ucanto/core/delegation"
+	"github.com/fil-forge/go-ucanto/core/invocation"
+	"github.com/fil-forge/go-ucanto/core/receipt"
+	"github.com/fil-forge/go-ucanto/core/result"
+	fdm "github.com/fil-forge/go-ucanto/core/result/failure/datamodel"
+	"github.com/fil-forge/indexing-service/pkg/types"
 	"github.com/ipni/go-libipni/find/model"
-	"github.com/storacha/go-libstoracha/blobindex"
-	rclient "github.com/storacha/go-ucanto/client/retrieval"
-	"github.com/storacha/go-ucanto/core/dag/blockstore"
-	"github.com/storacha/go-ucanto/core/delegation"
-	"github.com/storacha/go-ucanto/core/invocation"
-	"github.com/storacha/go-ucanto/core/receipt"
-	"github.com/storacha/go-ucanto/core/result"
-	fdm "github.com/storacha/go-ucanto/core/result/failure/datamodel"
-	"github.com/storacha/indexing-service/pkg/types"
 )
 
 type simpleLookup struct {

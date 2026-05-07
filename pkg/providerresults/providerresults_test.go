@@ -3,11 +3,11 @@ package providerresults_test
 import (
 	"testing"
 
+	"github.com/fil-forge/go-libstoracha/testutil"
+	"github.com/fil-forge/indexing-service/pkg/providerresults"
 	"github.com/ipni/go-libipni/find/model"
 	peer "github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
-	"github.com/storacha/go-libstoracha/testutil"
-	"github.com/storacha/indexing-service/pkg/providerresults"
 	"github.com/stretchr/testify/require"
 )
 

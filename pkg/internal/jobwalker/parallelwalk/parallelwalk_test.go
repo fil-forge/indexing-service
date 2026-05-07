@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/storacha/indexing-service/pkg/internal/jobwalker"
+	"github.com/fil-forge/indexing-service/pkg/internal/jobwalker"
 	"github.com/stretchr/testify/assert"
 )
 
