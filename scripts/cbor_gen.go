@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	blobindex "github.com/storacha/go-libstoracha/blobindex/datamodel"
+	blobindex "github.com/fil-forge/go-libstoracha/blobindex/datamodel"
 	cborgen "github.com/whyrusleeping/cbor-gen"
 )
 

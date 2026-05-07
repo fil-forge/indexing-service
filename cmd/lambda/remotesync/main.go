@@ -5,16 +5,16 @@ import (
 	"encoding/json"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/fil-forge/go-libstoracha/ipnipublisher/store"
+	"github.com/fil-forge/go-libstoracha/metadata"
+	"github.com/fil-forge/indexing-service/cmd/lambda"
+	"github.com/fil-forge/indexing-service/pkg/aws"
+	"github.com/fil-forge/indexing-service/pkg/redis"
+	"github.com/fil-forge/indexing-service/pkg/service/providerindex/remotesyncer"
+	"github.com/fil-forge/indexing-service/pkg/telemetry"
 	"github.com/ipfs/go-cid"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	goredis "github.com/redis/go-redis/v9"
-	"github.com/storacha/go-libstoracha/ipnipublisher/store"
-	"github.com/storacha/go-libstoracha/metadata"
-	"github.com/storacha/indexing-service/cmd/lambda"
-	"github.com/storacha/indexing-service/pkg/aws"
-	"github.com/storacha/indexing-service/pkg/redis"
-	"github.com/storacha/indexing-service/pkg/service/providerindex/remotesyncer"
-	"github.com/storacha/indexing-service/pkg/telemetry"
 )
 
 func main() {

@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/storacha/go-libstoracha/testutil"
-	"github.com/storacha/go-ucanto/core/delegation"
-	"github.com/storacha/go-ucanto/core/ipld"
-	"github.com/storacha/indexing-service/pkg/service/contentclaims"
-	"github.com/storacha/indexing-service/pkg/types"
+	"github.com/fil-forge/go-libstoracha/testutil"
+	"github.com/fil-forge/go-ucanto/core/delegation"
+	"github.com/fil-forge/go-ucanto/core/ipld"
+	"github.com/fil-forge/indexing-service/pkg/service/contentclaims"
+	"github.com/fil-forge/indexing-service/pkg/types"
 	"github.com/stretchr/testify/require"
 )
 

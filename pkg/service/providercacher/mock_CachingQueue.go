@@ -7,7 +7,7 @@ package providercacher
 import (
 	"context"
 
-	"github.com/storacha/go-libstoracha/queuepoller"
+	"github.com/fil-forge/go-libstoracha/queuepoller"
 	mock "github.com/stretchr/testify/mock"
 )
 

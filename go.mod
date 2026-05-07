@@ -1,4 +1,4 @@
-module github.com/storacha/indexing-service
+module github.com/fil-forge/indexing-service
 
 go 1.25.3
 
@@ -16,6 +16,8 @@ require (
 	github.com/aws/smithy-go v1.23.0
 	github.com/awslabs/aws-lambda-go-api-proxy v0.16.2
 	github.com/benbjohnson/clock v1.3.5
+	github.com/fil-forge/go-libstoracha v0.0.0-20260507180245-218ac18ff773
+	github.com/fil-forge/go-ucanto v0.0.0-20260507172450-5cb5d073f8ab
 	github.com/getsentry/sentry-go v0.33.0
 	github.com/google/uuid v1.6.0
 	github.com/ipfs/go-cid v0.6.0
@@ -31,8 +33,6 @@ require (
 	github.com/multiformats/go-multihash v0.2.3
 	github.com/redis/go-redis/extra/redisotel/v9 v9.10.0
 	github.com/redis/go-redis/v9 v9.10.0
-	github.com/storacha/go-libstoracha v0.7.6
-	github.com/storacha/go-ucanto v0.7.2-0.20251119232529-559b0a57d38f
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.39.0
 	github.com/testcontainers/testcontainers-go/modules/dynamodb v0.39.0

@@ -6,20 +6,20 @@ import (
 	"fmt"
 	"net/url"
 
+	"github.com/fil-forge/go-libstoracha/blobindex"
+	"github.com/fil-forge/go-libstoracha/capabilities/assert"
+	"github.com/fil-forge/go-ucanto/core/dag/blockstore"
+	"github.com/fil-forge/go-ucanto/core/delegation"
+	"github.com/fil-forge/go-ucanto/core/ipld"
+	"github.com/fil-forge/go-ucanto/did"
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multibase"
 	"github.com/multiformats/go-multihash"
-	"github.com/storacha/go-libstoracha/blobindex"
-	"github.com/storacha/go-libstoracha/capabilities/assert"
-	"github.com/storacha/go-ucanto/core/dag/blockstore"
-	"github.com/storacha/go-ucanto/core/delegation"
-	"github.com/storacha/go-ucanto/core/ipld"
-	"github.com/storacha/go-ucanto/did"
 	"github.com/urfave/cli/v2"
 
-	"github.com/storacha/indexing-service/pkg/client"
-	"github.com/storacha/indexing-service/pkg/telemetry"
-	"github.com/storacha/indexing-service/pkg/types"
+	"github.com/fil-forge/indexing-service/pkg/client"
+	"github.com/fil-forge/indexing-service/pkg/telemetry"
+	"github.com/fil-forge/indexing-service/pkg/types"
 )
 
 var queryCmd = &cli.Command{

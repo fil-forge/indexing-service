@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/fil-forge/go-libstoracha/blobindex"
+	"github.com/fil-forge/indexing-service/pkg/internal/link"
+	"github.com/fil-forge/indexing-service/pkg/telemetry"
+	"github.com/fil-forge/indexing-service/pkg/types"
 	"github.com/ipni/go-libipni/find/model"
-	"github.com/storacha/go-libstoracha/blobindex"
-	"github.com/storacha/indexing-service/pkg/internal/link"
-	"github.com/storacha/indexing-service/pkg/telemetry"
-	"github.com/storacha/indexing-service/pkg/types"
 	"go.opentelemetry.io/otel/attribute"
 )
 

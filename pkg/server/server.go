@@ -11,6 +11,22 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/fil-forge/go-libstoracha/capabilities/assert"
+	"github.com/fil-forge/go-libstoracha/ipnipublisher/store"
+	"github.com/fil-forge/go-ucanto/core/car"
+	"github.com/fil-forge/go-ucanto/core/dag/blockstore"
+	"github.com/fil-forge/go-ucanto/core/delegation"
+	"github.com/fil-forge/go-ucanto/did"
+	"github.com/fil-forge/go-ucanto/principal"
+	ed25519 "github.com/fil-forge/go-ucanto/principal/ed25519/signer"
+	"github.com/fil-forge/go-ucanto/principal/signer"
+	"github.com/fil-forge/go-ucanto/server"
+	hcmsg "github.com/fil-forge/go-ucanto/transport/headercar/message"
+	ucanhttp "github.com/fil-forge/go-ucanto/transport/http"
+	"github.com/fil-forge/indexing-service/pkg/build"
+	"github.com/fil-forge/indexing-service/pkg/service/contentclaims"
+	"github.com/fil-forge/indexing-service/pkg/telemetry"
+	"github.com/fil-forge/indexing-service/pkg/types"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/ipld/go-ipld-prime"
@@ -24,22 +40,6 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multibase"
 	"github.com/multiformats/go-multihash"
-	"github.com/storacha/go-libstoracha/capabilities/assert"
-	"github.com/storacha/go-libstoracha/ipnipublisher/store"
-	"github.com/storacha/go-ucanto/core/car"
-	"github.com/storacha/go-ucanto/core/dag/blockstore"
-	"github.com/storacha/go-ucanto/core/delegation"
-	"github.com/storacha/go-ucanto/did"
-	"github.com/storacha/go-ucanto/principal"
-	ed25519 "github.com/storacha/go-ucanto/principal/ed25519/signer"
-	"github.com/storacha/go-ucanto/principal/signer"
-	"github.com/storacha/go-ucanto/server"
-	hcmsg "github.com/storacha/go-ucanto/transport/headercar/message"
-	ucanhttp "github.com/storacha/go-ucanto/transport/http"
-	"github.com/storacha/indexing-service/pkg/build"
-	"github.com/storacha/indexing-service/pkg/service/contentclaims"
-	"github.com/storacha/indexing-service/pkg/telemetry"
-	"github.com/storacha/indexing-service/pkg/types"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
@@ -211,7 +211,7 @@ func withGzip(handler http.HandlerFunc) http.HandlerFunc {
 func GetRootHandler(id principal.Signer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(fmt.Sprintf("🔥 indexing-service %s\n", build.Version)))
-		w.Write([]byte("- https://github.com/storacha/indexing-service\n"))
+		w.Write([]byte("- https://github.com/fil-forge/indexing-service\n"))
 		w.Write([]byte(fmt.Sprintf("- %s\n", id.DID())))
 		if s, ok := id.(signer.WrappedSigner); ok {
 			w.Write([]byte(fmt.Sprintf("- %s\n", s.Unwrap().DID())))

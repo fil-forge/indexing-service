@@ -27,28 +27,28 @@ packages:
           structname: MockIpniFinder
           filename: mock_IpniFinder.go
           pkgname: extmocks
-  github.com/storacha/indexing-service/pkg/service/blobindexlookup:
+  github.com/fil-forge/indexing-service/pkg/service/blobindexlookup:
     interfaces:
       BlobIndexLookup: {}
-  github.com/storacha/indexing-service/pkg/service/contentclaims:
+  github.com/fil-forge/indexing-service/pkg/service/contentclaims:
     config:
       structname: MockContentClaims{{.InterfaceName}}
       filename: "mock_ContentClaims{{.InterfaceName}}.go"
     interfaces:
       Finder: {}
       Service: {}
-  github.com/storacha/indexing-service/pkg/service/providercacher:
+  github.com/fil-forge/indexing-service/pkg/service/providercacher:
     interfaces:
       CachingQueue: {}
       ProviderCacher: {}
-  github.com/storacha/indexing-service/pkg/service/providerindex:
+  github.com/fil-forge/indexing-service/pkg/service/providerindex:
     interfaces:
       ProviderIndex: {}
-  github.com/storacha/indexing-service/pkg/service/providerindex/legacy:
+  github.com/fil-forge/indexing-service/pkg/service/providerindex/legacy:
     interfaces:
       ClaimsFinder: {}
       ContentToClaimsMapper: {}
-  github.com/storacha/indexing-service/pkg/types:
+  github.com/fil-forge/indexing-service/pkg/types:
     interfaces:
       ContentClaimsCache: {}
       ContentClaimsStore: {}
@@ -56,7 +56,7 @@ packages:
       ProviderStore: {}
       Service: {}
       ValueSetCacheBatcher: {}
-  github.com/storacha/go-libstoracha/ipnipublisher/publisher:
+  github.com/fil-forge/go-libstoracha/ipnipublisher/publisher:
     interfaces:
       AsyncPublisher:
         config:

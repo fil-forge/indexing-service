@@ -7,11 +7,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fil-forge/go-libstoracha/blobindex"
+	"github.com/fil-forge/go-libstoracha/queuepoller"
+	"github.com/fil-forge/indexing-service/pkg/service/providercacher"
 	"github.com/ipni/go-libipni/find/model"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/storacha/go-libstoracha/blobindex"
-	"github.com/storacha/go-libstoracha/queuepoller"
-	"github.com/storacha/indexing-service/pkg/service/providercacher"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )

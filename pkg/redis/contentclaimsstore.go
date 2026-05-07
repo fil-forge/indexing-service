@@ -3,9 +3,9 @@ package redis
 import (
 	"io"
 
+	"github.com/fil-forge/go-ucanto/core/delegation"
+	"github.com/fil-forge/indexing-service/pkg/types"
 	cid "github.com/ipfs/go-cid"
-	"github.com/storacha/go-ucanto/core/delegation"
-	"github.com/storacha/indexing-service/pkg/types"
 )
 
 var _ types.ContentClaimsCache = (*ContentClaimsStore)(nil)

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/fil-forge/indexing-service/pkg/types"
 	"github.com/redis/go-redis/v9"
-	"github.com/storacha/indexing-service/pkg/types"
 )
 
 // DefaultExpire is the expire time we set on Redis when Set/SetExpiration are called with expire=true

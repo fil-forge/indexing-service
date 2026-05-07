@@ -3,9 +3,9 @@ package blobindexlookup
 import (
 	"context"
 
+	"github.com/fil-forge/go-libstoracha/blobindex"
+	"github.com/fil-forge/indexing-service/pkg/types"
 	"github.com/ipni/go-libipni/find/model"
-	"github.com/storacha/go-libstoracha/blobindex"
-	"github.com/storacha/indexing-service/pkg/types"
 )
 
 // BlobIndexLookup is a read through cache for fetching blob indexes

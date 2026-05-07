@@ -4,9 +4,9 @@ import (
 	"context"
 	"net/url"
 
+	"github.com/fil-forge/go-ucanto/core/delegation"
+	"github.com/fil-forge/indexing-service/pkg/types"
 	"github.com/ipld/go-ipld-prime/datamodel"
-	"github.com/storacha/go-ucanto/core/delegation"
-	"github.com/storacha/indexing-service/pkg/types"
 )
 
 type (

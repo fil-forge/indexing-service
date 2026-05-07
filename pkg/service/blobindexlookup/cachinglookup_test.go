@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/fil-forge/go-libstoracha/blobindex"
+	"github.com/fil-forge/go-libstoracha/testutil"
+	"github.com/fil-forge/indexing-service/pkg/service/blobindexlookup"
+	"github.com/fil-forge/indexing-service/pkg/service/providercacher"
+	"github.com/fil-forge/indexing-service/pkg/types"
 	"github.com/ipni/go-libipni/find/model"
-	"github.com/storacha/go-libstoracha/blobindex"
-	"github.com/storacha/go-libstoracha/testutil"
-	"github.com/storacha/indexing-service/pkg/service/blobindexlookup"
-	"github.com/storacha/indexing-service/pkg/service/providercacher"
-	"github.com/storacha/indexing-service/pkg/types"
 	"github.com/stretchr/testify/require"
 )
 

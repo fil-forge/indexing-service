@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	ed25519 "github.com/storacha/go-ucanto/principal/ed25519/signer"
+	ed25519 "github.com/fil-forge/go-ucanto/principal/ed25519/signer"
 )
 
 func main() {

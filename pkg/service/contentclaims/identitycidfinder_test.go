@@ -6,13 +6,13 @@ import (
 	"io"
 	"testing"
 
+	"github.com/fil-forge/go-libstoracha/testutil"
+	"github.com/fil-forge/go-ucanto/core/delegation"
+	"github.com/fil-forge/go-ucanto/core/ipld"
+	"github.com/fil-forge/indexing-service/pkg/service/contentclaims"
 	"github.com/ipfs/go-cid"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	multihash "github.com/multiformats/go-multihash/core"
-	"github.com/storacha/go-libstoracha/testutil"
-	"github.com/storacha/go-ucanto/core/delegation"
-	"github.com/storacha/go-ucanto/core/ipld"
-	"github.com/storacha/indexing-service/pkg/service/contentclaims"
 	"github.com/stretchr/testify/require"
 )
 

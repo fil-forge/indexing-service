@@ -11,9 +11,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/storacha/go-libstoracha/testutil"
-	"github.com/storacha/go-ucanto/core/delegation"
-	"github.com/storacha/indexing-service/pkg/service/contentclaims"
+	"github.com/fil-forge/go-libstoracha/testutil"
+	"github.com/fil-forge/go-ucanto/core/delegation"
+	"github.com/fil-forge/indexing-service/pkg/service/contentclaims"
 	"github.com/stretchr/testify/require"
 )
 

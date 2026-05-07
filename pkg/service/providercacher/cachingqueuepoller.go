@@ -1,7 +1,7 @@
 package providercacher
 
 import (
-	"github.com/storacha/go-libstoracha/queuepoller"
+	"github.com/fil-forge/go-libstoracha/queuepoller"
 )
 
 // CachingQueuePoller polls a queue for provider caching jobs and processes them

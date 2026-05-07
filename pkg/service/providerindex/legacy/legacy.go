@@ -7,15 +7,17 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/fil-forge/go-libstoracha/capabilities/assert"
+	"github.com/fil-forge/go-libstoracha/digestutil"
+	"github.com/fil-forge/go-libstoracha/metadata"
+	"github.com/fil-forge/indexing-service/pkg/internal/link"
+	"github.com/fil-forge/indexing-service/pkg/service/contentclaims"
+	"github.com/fil-forge/indexing-service/pkg/types"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/storacha/go-libstoracha/capabilities/assert"
-	"github.com/storacha/go-libstoracha/digestutil"
-	"github.com/storacha/go-libstoracha/metadata"
-	"github.com/storacha/indexing-service/pkg/internal/link"
-	"github.com/storacha/indexing-service/pkg/service/contentclaims"
-	"github.com/storacha/indexing-service/pkg/types"
 	"golang.org/x/exp/slices"
 
+	"github.com/fil-forge/go-ucanto/core/delegation"
+	"github.com/fil-forge/go-ucanto/did"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
@@ -24,8 +26,6 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/multiformats/go-multicodec"
 	"github.com/multiformats/go-multihash"
-	"github.com/storacha/go-ucanto/core/delegation"
-	"github.com/storacha/go-ucanto/did"
 )
 
 // ProviderID is the peer ID used in synthetized provider results.
