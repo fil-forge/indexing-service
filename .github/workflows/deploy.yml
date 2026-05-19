@@ -45,8 +45,6 @@ jobs:
       aws-region: ${{ secrets.STAGING_AWS_REGION }}
       region: ${{ secrets.STAGING_AWS_REGION }}
       private-key: ${{ secrets.STAGING_PRIVATE_KEY }}
-      cloudflare-zone-id: ${{ secrets.STAGING_CLOUDFLARE_ZONE_ID }}
-      cloudflare-api-token: ${{ secrets.STAGING_CLOUDFLARE_API_TOKEN }}
       honeycomb-api-key: ${{ secrets.STAGING_HONEYCOMB_API_KEY }}
       sentry-dsn: ${{ secrets.STAGING_SENTRY_DSN }}
 
@@ -68,8 +66,6 @@ jobs:
       aws-region: ${{ secrets.WARM_STAGING_AWS_REGION }}
       region: ${{ secrets.WARM_STAGING_AWS_REGION }}
       private-key: ${{ secrets.WARM_STAGING_PRIVATE_KEY }}
-      cloudflare-zone-id: ${{ secrets.WARM_STAGING_CLOUDFLARE_ZONE_ID }}
-      cloudflare-api-token: ${{ secrets.WARM_STAGING_CLOUDFLARE_API_TOKEN }}
       sentry-dsn: ${{ secrets.WARM_STAGING_SENTRY_DSN }}
 
   # apply prod and test on successful release, plan otherwise
@@ -90,8 +86,6 @@ jobs:
       aws-region: ${{ secrets.PROD_AWS_REGION }}
       region: ${{ secrets.PROD_AWS_REGION }}
       private-key: ${{ secrets.PROD_PRIVATE_KEY }}
-      cloudflare-zone-id: ${{ secrets.PROD_CLOUDFLARE_ZONE_ID }}
-      cloudflare-api-token: ${{ secrets.PROD_CLOUDFLARE_API_TOKEN }}
       honeycomb-api-key: ${{ secrets.PROD_HONEYCOMB_API_KEY }}
       sentry-dsn: ${{ secrets.PROD_SENTRY_DSN }}
 
@@ -113,8 +107,6 @@ jobs:
       aws-region: ${{ secrets.FORGE_PROD_AWS_REGION }}
       region: ${{ secrets.FORGE_PROD_AWS_REGION }}
       private-key: ${{ secrets.FORGE_PROD_PRIVATE_KEY }}
-      cloudflare-zone-id: ${{ secrets.FORGE_PROD_CLOUDFLARE_ZONE_ID }}
-      cloudflare-api-token: ${{ secrets.FORGE_PROD_CLOUDFLARE_API_TOKEN }}
       sentry-dsn: ${{ secrets.FORGE_PROD_SENTRY_DSN }}
 
   forge-test:
@@ -135,6 +127,4 @@ jobs:
       aws-region: ${{ secrets.FORGE_TEST_AWS_REGION }}
       region: ${{ secrets.FORGE_TEST_AWS_REGION }}
       private-key: ${{ secrets.FORGE_TEST_PRIVATE_KEY }}
-      cloudflare-zone-id: ${{ secrets.FORGE_TEST_CLOUDFLARE_ZONE_ID }}
-      cloudflare-api-token: ${{ secrets.FORGE_TEST_CLOUDFLARE_API_TOKEN }}
       sentry-dsn: ${{ secrets.FORGE_TEST_SENTRY_DSN }}

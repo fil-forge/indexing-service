@@ -5,7 +5,7 @@
   "port": 8080,
   "js": null,
   "domainBase": "",
-  "cloudflare": true,
+  "cloudflare": false,
   "createDB": false,
   "caches": [
     "providers",
