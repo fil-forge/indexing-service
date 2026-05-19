@@ -10,7 +10,6 @@ import (
 	"github.com/fil-forge/go-ipni-tools/pkg/queue"
 	"github.com/fil-forge/go-ipni-tools/pkg/store"
 	"github.com/fil-forge/indexing-service/pkg/aws"
-	awspublishingqueue "github.com/fil-forge/indexing-service/pkg/aws"
 	"github.com/fil-forge/indexing-service/pkg/lib"
 	"github.com/fil-forge/indexing-service/pkg/redis"
 	"github.com/fil-forge/indexing-service/pkg/server"
@@ -160,8 +159,8 @@ func setupIPNIPublisherStore(cfg aws.Config) *store.AdStore {
 }
 
 func setupIPNIPublisher(cfg aws.Config) (*queue.PublishingQueuePoller, *queue.AdvertisementPublishingQueuePoller, error) {
-	publishingQueue := awspublishingqueue.NewSQSPublishingQueue(cfg.Config, cfg.SQSPublishingQueueID, cfg.PublishingBucket)
-	advertisementPublishingQueue := awspublishingqueue.NewSQSAdvertisementPublishingQueue(cfg.Config, cfg.SQSAdvertisementPublishingQueueID)
+	publishingQueue := aws.NewSQSPublishingQueue(cfg.Config, cfg.SQSPublishingQueueID, cfg.PublishingBucket)
+	advertisementPublishingQueue := aws.NewSQSAdvertisementPublishingQueue(cfg.Config, cfg.SQSAdvertisementPublishingQueueID)
 	store := setupIPNIPublisherStore(cfg)
 	advertisementQueuePublisher := queue.NewAdvertisementQueuePublisher(advertisementPublishingQueue, store)
 	publishingQueuePoller, err := queue.NewPublishingQueuePoller(publishingQueue, advertisementQueuePublisher)

@@ -149,6 +149,9 @@ func (pi *ProviderIndexService) getProviderResults(ctx context.Context, mh mh.Mu
 	if err != nil {
 		return nil, fmt.Errorf("fetching from IPNI failed: %w", err)
 	}
+	if len(results) > 0 {
+		pi.cacheResults(ctx, s, mh, results)
+	}
 	return results, nil
 }
 
