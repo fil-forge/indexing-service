@@ -2,21 +2,24 @@ package main
 
 import (
 	"fmt"
+	"time"
 
-	"github.com/fil-forge/go-libstoracha/ipnipublisher/notifier"
-	"github.com/fil-forge/go-libstoracha/ipnipublisher/publisher"
-	"github.com/fil-forge/go-libstoracha/ipnipublisher/queue"
-	awspublishingqueue "github.com/fil-forge/go-libstoracha/ipnipublisher/queue/aws"
-	"github.com/fil-forge/go-libstoracha/ipnipublisher/store"
-	"github.com/fil-forge/go-libstoracha/metadata"
-	userver "github.com/fil-forge/go-ucanto/server"
+	"github.com/fil-forge/go-ipni-tools/pkg/metadata"
+	"github.com/fil-forge/go-ipni-tools/pkg/notifier"
+	"github.com/fil-forge/go-ipni-tools/pkg/publisher"
+	"github.com/fil-forge/go-ipni-tools/pkg/queue"
+	"github.com/fil-forge/go-ipni-tools/pkg/store"
 	"github.com/fil-forge/indexing-service/pkg/aws"
-	"github.com/fil-forge/indexing-service/pkg/principalresolver"
+	awspublishingqueue "github.com/fil-forge/indexing-service/pkg/aws"
+	"github.com/fil-forge/indexing-service/pkg/lib"
 	"github.com/fil-forge/indexing-service/pkg/redis"
 	"github.com/fil-forge/indexing-service/pkg/server"
 	"github.com/fil-forge/indexing-service/pkg/service/providercacher"
 	"github.com/fil-forge/indexing-service/pkg/service/providerindex/remotesyncer"
 	"github.com/fil-forge/indexing-service/pkg/telemetry"
+	"github.com/fil-forge/libforge/didresolver"
+	userver "github.com/fil-forge/ucantone/server"
+	"github.com/fil-forge/ucantone/validator"
 	goredis "github.com/redis/go-redis/v9"
 	"github.com/urfave/cli/v2"
 	"go.opentelemetry.io/otel/sdk/trace"
@@ -40,15 +43,26 @@ var awsCmd = &cli.Command{
 			server.WithIdentity(cfg.Signer),
 		}
 
-		presolv, err := principalresolver.New(cfg.PrincipalMapping)
+		mapResolv, err := didresolver.NewMapResolver(cfg.PrincipalMapping)
 		if err != nil {
-			return fmt.Errorf("creating principal resolver: %w", err)
+			return fmt.Errorf("creating map resolver: %w", err)
 		}
+		httpResolv, err := didresolver.NewHTTPResolver()
+		if err != nil {
+			return fmt.Errorf("creating HTTP resolver: %w", err)
+		}
+		cacheResolv, err := didresolver.NewCachedResolver(httpResolv.Resolve, time.Hour*3)
+		if err != nil {
+			return fmt.Errorf("creating cached HTTP resolver: %w", err)
+		}
+		tierResolv := didresolver.NewTieredResolver(mapResolv.Resolve, cacheResolv.Resolve)
 
 		srvOpts = append(
 			srvOpts,
 			server.WithContentClaimsOptions(
-				userver.WithPrincipalResolver(presolv.ResolveDIDKey),
+				userver.WithValidationOptions(
+					validator.WithDIDResolver(lib.NewDIDVerifierResolverAdapter(tierResolv.Resolve)),
+				),
 			),
 		)
 
@@ -99,8 +113,6 @@ var awsCmd = &cli.Command{
 		defer publisher.Stop()
 		advertisementPublisher.Start()
 		defer advertisementPublisher.Stop()
-
-		srvOpts = append(srvOpts, server.WithIPNIPublisherStore(setupIPNIPublisherStore(cfg)))
 
 		return server.ListenAndServe(addr, indexer, srvOpts...)
 	},

@@ -7,8 +7,8 @@ package types
 import (
 	"context"
 
-	"github.com/fil-forge/go-ucanto/core/delegation"
-	"github.com/fil-forge/go-ucanto/core/ipld"
+	"github.com/fil-forge/ucantone/ucan"
+	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/peer"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -41,16 +41,16 @@ func (_m *MockService) EXPECT() *MockService_Expecter {
 }
 
 // Cache provides a mock function for the type MockService
-func (_mock *MockService) Cache(ctx context.Context, provider peer.AddrInfo, claim delegation.Delegation) error {
-	ret := _mock.Called(ctx, provider, claim)
+func (_mock *MockService) Cache(ctx context.Context, provider peer.AddrInfo, claim ucan.Invocation, meta ucan.Container) error {
+	ret := _mock.Called(ctx, provider, claim, meta)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Cache")
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, peer.AddrInfo, delegation.Delegation) error); ok {
-		r0 = returnFunc(ctx, provider, claim)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, peer.AddrInfo, ucan.Invocation, ucan.Container) error); ok {
+		r0 = returnFunc(ctx, provider, claim, meta)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -65,12 +65,13 @@ type MockService_Cache_Call struct {
 // Cache is a helper method to define mock.On call
 //   - ctx context.Context
 //   - provider peer.AddrInfo
-//   - claim delegation.Delegation
-func (_e *MockService_Expecter) Cache(ctx interface{}, provider interface{}, claim interface{}) *MockService_Cache_Call {
-	return &MockService_Cache_Call{Call: _e.mock.On("Cache", ctx, provider, claim)}
+//   - claim ucan.Invocation
+//   - meta ucan.Container
+func (_e *MockService_Expecter) Cache(ctx interface{}, provider interface{}, claim interface{}, meta interface{}) *MockService_Cache_Call {
+	return &MockService_Cache_Call{Call: _e.mock.On("Cache", ctx, provider, claim, meta)}
 }
 
-func (_c *MockService_Cache_Call) Run(run func(ctx context.Context, provider peer.AddrInfo, claim delegation.Delegation)) *MockService_Cache_Call {
+func (_c *MockService_Cache_Call) Run(run func(ctx context.Context, provider peer.AddrInfo, claim ucan.Invocation, meta ucan.Container)) *MockService_Cache_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -80,14 +81,19 @@ func (_c *MockService_Cache_Call) Run(run func(ctx context.Context, provider pee
 		if args[1] != nil {
 			arg1 = args[1].(peer.AddrInfo)
 		}
-		var arg2 delegation.Delegation
+		var arg2 ucan.Invocation
 		if args[2] != nil {
-			arg2 = args[2].(delegation.Delegation)
+			arg2 = args[2].(ucan.Invocation)
+		}
+		var arg3 ucan.Container
+		if args[3] != nil {
+			arg3 = args[3].(ucan.Container)
 		}
 		run(
 			arg0,
 			arg1,
 			arg2,
+			arg3,
 		)
 	})
 	return _c
@@ -98,32 +104,32 @@ func (_c *MockService_Cache_Call) Return(err error) *MockService_Cache_Call {
 	return _c
 }
 
-func (_c *MockService_Cache_Call) RunAndReturn(run func(ctx context.Context, provider peer.AddrInfo, claim delegation.Delegation) error) *MockService_Cache_Call {
+func (_c *MockService_Cache_Call) RunAndReturn(run func(ctx context.Context, provider peer.AddrInfo, claim ucan.Invocation, meta ucan.Container) error) *MockService_Cache_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Get provides a mock function for the type MockService
-func (_mock *MockService) Get(ctx context.Context, claim ipld.Link) (delegation.Delegation, error) {
+func (_mock *MockService) Get(ctx context.Context, claim cid.Cid) (ucan.Invocation, error) {
 	ret := _mock.Called(ctx, claim)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Get")
 	}
 
-	var r0 delegation.Delegation
+	var r0 ucan.Invocation
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, ipld.Link) (delegation.Delegation, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, cid.Cid) (ucan.Invocation, error)); ok {
 		return returnFunc(ctx, claim)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, ipld.Link) delegation.Delegation); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, cid.Cid) ucan.Invocation); ok {
 		r0 = returnFunc(ctx, claim)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(delegation.Delegation)
+			r0 = ret.Get(0).(ucan.Invocation)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, ipld.Link) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, cid.Cid) error); ok {
 		r1 = returnFunc(ctx, claim)
 	} else {
 		r1 = ret.Error(1)
@@ -138,20 +144,20 @@ type MockService_Get_Call struct {
 
 // Get is a helper method to define mock.On call
 //   - ctx context.Context
-//   - claim ipld.Link
+//   - claim cid.Cid
 func (_e *MockService_Expecter) Get(ctx interface{}, claim interface{}) *MockService_Get_Call {
 	return &MockService_Get_Call{Call: _e.mock.On("Get", ctx, claim)}
 }
 
-func (_c *MockService_Get_Call) Run(run func(ctx context.Context, claim ipld.Link)) *MockService_Get_Call {
+func (_c *MockService_Get_Call) Run(run func(ctx context.Context, claim cid.Cid)) *MockService_Get_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 ipld.Link
+		var arg1 cid.Cid
 		if args[1] != nil {
-			arg1 = args[1].(ipld.Link)
+			arg1 = args[1].(cid.Cid)
 		}
 		run(
 			arg0,
@@ -161,27 +167,27 @@ func (_c *MockService_Get_Call) Run(run func(ctx context.Context, claim ipld.Lin
 	return _c
 }
 
-func (_c *MockService_Get_Call) Return(delegation1 delegation.Delegation, err error) *MockService_Get_Call {
-	_c.Call.Return(delegation1, err)
+func (_c *MockService_Get_Call) Return(invocation ucan.Invocation, err error) *MockService_Get_Call {
+	_c.Call.Return(invocation, err)
 	return _c
 }
 
-func (_c *MockService_Get_Call) RunAndReturn(run func(ctx context.Context, claim ipld.Link) (delegation.Delegation, error)) *MockService_Get_Call {
+func (_c *MockService_Get_Call) RunAndReturn(run func(ctx context.Context, claim cid.Cid) (ucan.Invocation, error)) *MockService_Get_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Publish provides a mock function for the type MockService
-func (_mock *MockService) Publish(ctx context.Context, claim delegation.Delegation) error {
-	ret := _mock.Called(ctx, claim)
+func (_mock *MockService) Publish(ctx context.Context, claim ucan.Invocation, meta ucan.Container) error {
+	ret := _mock.Called(ctx, claim, meta)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Publish")
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, delegation.Delegation) error); ok {
-		r0 = returnFunc(ctx, claim)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, ucan.Invocation, ucan.Container) error); ok {
+		r0 = returnFunc(ctx, claim, meta)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -195,24 +201,30 @@ type MockService_Publish_Call struct {
 
 // Publish is a helper method to define mock.On call
 //   - ctx context.Context
-//   - claim delegation.Delegation
-func (_e *MockService_Expecter) Publish(ctx interface{}, claim interface{}) *MockService_Publish_Call {
-	return &MockService_Publish_Call{Call: _e.mock.On("Publish", ctx, claim)}
+//   - claim ucan.Invocation
+//   - meta ucan.Container
+func (_e *MockService_Expecter) Publish(ctx interface{}, claim interface{}, meta interface{}) *MockService_Publish_Call {
+	return &MockService_Publish_Call{Call: _e.mock.On("Publish", ctx, claim, meta)}
 }
 
-func (_c *MockService_Publish_Call) Run(run func(ctx context.Context, claim delegation.Delegation)) *MockService_Publish_Call {
+func (_c *MockService_Publish_Call) Run(run func(ctx context.Context, claim ucan.Invocation, meta ucan.Container)) *MockService_Publish_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 delegation.Delegation
+		var arg1 ucan.Invocation
 		if args[1] != nil {
-			arg1 = args[1].(delegation.Delegation)
+			arg1 = args[1].(ucan.Invocation)
+		}
+		var arg2 ucan.Container
+		if args[2] != nil {
+			arg2 = args[2].(ucan.Container)
 		}
 		run(
 			arg0,
 			arg1,
+			arg2,
 		)
 	})
 	return _c
@@ -223,7 +235,7 @@ func (_c *MockService_Publish_Call) Return(err error) *MockService_Publish_Call 
 	return _c
 }
 
-func (_c *MockService_Publish_Call) RunAndReturn(run func(ctx context.Context, claim delegation.Delegation) error) *MockService_Publish_Call {
+func (_c *MockService_Publish_Call) RunAndReturn(run func(ctx context.Context, claim ucan.Invocation, meta ucan.Container) error) *MockService_Publish_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -1,30 +1,28 @@
 package redis
 
 import (
-	"io"
-
-	"github.com/fil-forge/go-ucanto/core/delegation"
 	"github.com/fil-forge/indexing-service/pkg/types"
+	"github.com/fil-forge/ucantone/ucan"
+	"github.com/fil-forge/ucantone/ucan/invocation"
 	cid "github.com/ipfs/go-cid"
 )
 
 var _ types.ContentClaimsCache = (*ContentClaimsStore)(nil)
 
 // ContentClaimsStore is a RedisStore for storing content claims that implements types.ContentClaimsStore
-type ContentClaimsStore = Store[cid.Cid, delegation.Delegation]
+type ContentClaimsStore = Store[cid.Cid, ucan.Invocation]
 
 // NewContentClaimsStore returns a new instance of a Content Claims Store using the given redis client
 func NewContentClaimsStore(client Client, opts ...Option) *ContentClaimsStore {
-	return NewStore(delegationFromRedis, delegationToRedis, cidKeyString, client, opts...)
+	return NewStore(claimFromRedis, claimToRedis, cidKeyString, client, opts...)
 }
 
-func delegationFromRedis(data string) (delegation.Delegation, error) {
-	return delegation.Extract([]byte(data))
+func claimFromRedis(data string) (ucan.Invocation, error) {
+	return invocation.Decode([]byte(data))
 }
 
-func delegationToRedis(d delegation.Delegation) (string, error) {
-	r := delegation.Archive(d)
-	data, err := io.ReadAll(r)
+func claimToRedis(claim ucan.Invocation) (string, error) {
+	data, err := invocation.Encode(claim)
 	if err != nil {
 		return "", err
 	}

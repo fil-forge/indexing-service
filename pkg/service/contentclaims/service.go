@@ -5,10 +5,9 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/fil-forge/go-ucanto/core/delegation"
-	"github.com/fil-forge/indexing-service/pkg/internal/link"
 	"github.com/fil-forge/indexing-service/pkg/types"
-	"github.com/ipld/go-ipld-prime"
+	"github.com/fil-forge/ucantone/ucan"
+	"github.com/ipfs/go-cid"
 )
 
 type ClaimService struct {
@@ -19,16 +18,16 @@ type ClaimService struct {
 
 var _ Service = (*ClaimService)(nil)
 
-func (cs *ClaimService) Cache(ctx context.Context, claim delegation.Delegation) error {
-	return cs.cache.Set(ctx, link.ToCID(claim.Link()), claim, true)
+func (cs *ClaimService) Cache(ctx context.Context, claim ucan.Invocation) error {
+	return cs.cache.Set(ctx, claim.Link(), claim, true)
 }
 
-func (cs *ClaimService) Find(ctx context.Context, claim ipld.Link, url *url.URL) (delegation.Delegation, error) {
+func (cs *ClaimService) Find(ctx context.Context, claim cid.Cid, url *url.URL) (ucan.Invocation, error) {
 	return cs.finder.Find(ctx, claim, url)
 }
 
-func (cs *ClaimService) Get(ctx context.Context, claim ipld.Link) (delegation.Delegation, error) {
-	c, err := cs.cache.Get(ctx, link.ToCID(claim))
+func (cs *ClaimService) Get(ctx context.Context, claim cid.Cid) (ucan.Invocation, error) {
+	c, err := cs.cache.Get(ctx, claim)
 	if err == nil {
 		return c, nil
 	}
@@ -46,7 +45,7 @@ func (cs *ClaimService) Get(ctx context.Context, claim ipld.Link) (delegation.De
 	return c, nil
 }
 
-func (cs *ClaimService) Publish(ctx context.Context, claim delegation.Delegation) error {
+func (cs *ClaimService) Publish(ctx context.Context, claim ucan.Invocation) error {
 	err := cs.store.Put(ctx, claim.Link(), claim)
 	if err != nil {
 		return fmt.Errorf("putting claim to store: %w", err)

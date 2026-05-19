@@ -3,18 +3,18 @@ package providercacher
 import (
 	"context"
 
-	"github.com/fil-forge/go-libstoracha/blobindex"
-	"github.com/fil-forge/go-libstoracha/queuepoller"
+	"github.com/fil-forge/go-ipni-tools/pkg/queue"
+	"github.com/fil-forge/libforge/blobindex"
 	"github.com/ipni/go-libipni/find/model"
 )
 
 type (
-	CachingQueueQueuer = queuepoller.QueueQueuer[ProviderCachingJob]
-	CachingQueue       = queuepoller.Queue[ProviderCachingJob]
+	CachingQueueQueuer = queue.QueueQueuer[ProviderCachingJob]
+	CachingQueue       = queue.Queue[ProviderCachingJob]
 
 	ProviderCachingJob struct {
 		Provider model.ProviderResult
-		Index    blobindex.ShardedDagIndexView
+		Index    blobindex.ShardedDagIndex
 	}
 
 	JobHandler struct {

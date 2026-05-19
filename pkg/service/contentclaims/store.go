@@ -5,20 +5,20 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 
-	"github.com/fil-forge/go-libstoracha/ipnipublisher/store"
-	"github.com/fil-forge/go-ucanto/core/delegation"
+	"github.com/fil-forge/go-ipni-tools/pkg/store"
 	"github.com/fil-forge/indexing-service/pkg/types"
+	"github.com/fil-forge/ucantone/ucan"
+	"github.com/fil-forge/ucantone/ucan/invocation"
+	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
-	"github.com/ipld/go-ipld-prime"
 )
 
 type bucketStore struct {
 	bucket store.Store
 }
 
-func (bs *bucketStore) Get(ctx context.Context, key ipld.Link) (delegation.Delegation, error) {
+func (bs *bucketStore) Get(ctx context.Context, key cid.Cid) (ucan.Invocation, error) {
 	r, err := bs.bucket.Get(ctx, toKey(key))
 	if err != nil {
 		if store.IsNotFound(err) {
@@ -28,20 +28,19 @@ func (bs *bucketStore) Get(ctx context.Context, key ipld.Link) (delegation.Deleg
 	}
 	defer r.Close()
 
-	b, err := io.ReadAll(r)
-	if err != nil {
-		return nil, err
+	var inv invocation.Invocation
+	if err := inv.UnmarshalCBOR(r); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal invocation: %w", err)
 	}
-	return delegation.Extract(b)
+	return &inv, nil
 }
 
-func (bs *bucketStore) Put(ctx context.Context, key ipld.Link, value delegation.Delegation) error {
-	r := value.Archive()
-	data, err := io.ReadAll(r)
+func (bs *bucketStore) Put(ctx context.Context, key cid.Cid, value ucan.Invocation) error {
+	b, err := invocation.Encode(value)
 	if err != nil {
-		return fmt.Errorf("reading delegation archive: %w", err)
+		return fmt.Errorf("failed to encode invocation: %w", err)
 	}
-	return bs.bucket.Put(ctx, toKey(key), uint64(len(data)), bytes.NewReader(data))
+	return bs.bucket.Put(ctx, toKey(key), uint64(len(b)), bytes.NewReader(b))
 }
 
 var _ types.ContentClaimsStore = (*bucketStore)(nil)
@@ -55,7 +54,7 @@ type dsStore struct {
 	ds datastore.Datastore
 }
 
-func (d *dsStore) Get(ctx context.Context, key ipld.Link) (delegation.Delegation, error) {
+func (d *dsStore) Get(ctx context.Context, key cid.Cid) (ucan.Invocation, error) {
 	b, err := d.ds.Get(ctx, datastore.NewKey(toKey(key)))
 	if err != nil {
 		if errors.Is(err, datastore.ErrNotFound) {
@@ -63,15 +62,14 @@ func (d *dsStore) Get(ctx context.Context, key ipld.Link) (delegation.Delegation
 		}
 		return nil, err
 	}
-	return delegation.Extract(b)
+	return invocation.Decode(b)
 
 }
 
-func (d *dsStore) Put(ctx context.Context, key ipld.Link, value delegation.Delegation) error {
-	r := value.Archive()
-	b, err := io.ReadAll(r)
+func (d *dsStore) Put(ctx context.Context, key cid.Cid, value ucan.Invocation) error {
+	b, err := invocation.Encode(value)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to encode invocation: %w", err)
 	}
 	return d.ds.Put(ctx, datastore.NewKey(toKey(key)), b)
 }
@@ -83,6 +81,6 @@ func NewStoreFromDatastore(ds datastore.Datastore) types.ContentClaimsStore {
 }
 
 // toKey transforms the claim root CID into a string key.
-func toKey(link ipld.Link) string {
-	return fmt.Sprintf("%s/%s.car", link, link)
+func toKey(link cid.Cid) string {
+	return fmt.Sprintf("%s/%s", link, link)
 }

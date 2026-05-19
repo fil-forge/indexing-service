@@ -16,20 +16,17 @@ import (
 	"net/url"
 	"os"
 
-	"github.com/fil-forge/go-libstoracha/blobindex"
-	"github.com/fil-forge/go-libstoracha/bytemap"
-	cassert "github.com/fil-forge/go-libstoracha/capabilities/assert"
-	ctypes "github.com/fil-forge/go-libstoracha/capabilities/types"
-	"github.com/fil-forge/go-ucanto/core/car"
-	"github.com/fil-forge/go-ucanto/core/delegation"
-	"github.com/fil-forge/go-ucanto/core/ipld/block"
-	ed25519 "github.com/fil-forge/go-ucanto/principal/ed25519/signer"
-	"github.com/fil-forge/go-ucanto/ucan"
+	"github.com/fil-forge/automobile"
 	"github.com/fil-forge/indexing-service/pkg/service/queryresult"
 	"github.com/fil-forge/indexing-service/pkg/types"
+	"github.com/fil-forge/libforge/blobindex"
+	"github.com/fil-forge/libforge/bytemap"
+	ctypes "github.com/fil-forge/libforge/capabilities"
+	cassert "github.com/fil-forge/libforge/capabilities/assert"
+	"github.com/fil-forge/ucantone/principal/ed25519"
+	"github.com/fil-forge/ucantone/ucan"
+	"github.com/fil-forge/ucantone/ucan/invocation"
 	"github.com/ipfs/go-cid"
-	"github.com/ipld/go-ipld-prime"
-	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	"github.com/multiformats/go-multibase"
 	"github.com/multiformats/go-multicodec"
 	"github.com/multiformats/go-multihash"
@@ -44,93 +41,90 @@ func main() {
 
 	blockBytes := randomBytes(32)
 	blockDigest := must(multihash.Sum(blockBytes, multihash.SHA2_256, -1))
-	blockLink := cidlink.Link{Cid: cid.NewCidV1(cid.Raw, blockDigest)}
+	blockLink := cid.NewCidV1(cid.Raw, blockDigest)
 
-	carRoots := []ipld.Link{blockLink}
-	carBlock := block.NewBlock(blockLink, blockBytes)
-
-	carBytes := must(io.ReadAll(car.Encode(carRoots, func(yield func(block.Block, error) bool) {
-		yield(carBlock, nil)
-	})))
+	carRoots := []cid.Cid{blockLink}
+	carBlock := automobile.Block{Link: blockLink, Data: blockBytes}
+	carBytes := must(io.ReadAll(automobile.Encode(carRoots, []automobile.Block{carBlock})))
 	carDigest := must(multihash.Sum(carBytes, multihash.SHA2_256, -1))
 
-	index := must(blobindex.FromShardArchives(blockLink, [][]byte{carBytes}))
-	indexBytes := must(io.ReadAll(must(index.Archive())))
+	_, ents, err := automobile.Index(bytes.NewReader(carBytes))
+	if err != nil {
+		panic(err)
+	}
+	index := blobindex.NewShardedDagIndex(1)
+	for _, ent := range ents {
+		index.SetSlice(carDigest, ent.Link.Hash(), blobindex.Range{Start: int64(ent.Start), End: int64(ent.End)})
+	}
+	var indexBuf bytes.Buffer
+	if err := blobindex.Archive(index, &indexBuf); err != nil {
+		panic(err)
+	}
+	indexBytes := indexBuf.Bytes()
 	indexDigest := must(multihash.Sum(indexBytes, multihash.SHA2_256, -1))
-	indexLink := cidlink.Link{Cid: cid.NewCidV1(uint64(multicodec.Car), indexDigest)}
+	indexLink := cid.NewCidV1(uint64(multicodec.Car), indexDigest)
 
 	carLocationURL := blobURL(randomURL(), carDigest)
-	carLocationCommitment := must(cassert.Location.Delegate(
+	carLocationCommitment := must(cassert.Location.Invoke(
 		storageID,
-		space,
-		storageID.DID().String(),
-		cassert.LocationCaveats{
+		storageID.DID(),
+		&cassert.LocationArguments{
 			Space:    space.DID(),
-			Content:  ctypes.FromHash(carDigest),
-			Location: []url.URL{*carLocationURL},
+			Content:  carDigest,
+			Location: []ctypes.CborURL{carLocationURL},
 		},
+		invocation.WithAudience(space.DID()),
 	))
 
 	indexLocationURL := blobURL(randomURL(), indexDigest)
-	indexLocationCommitment := must(cassert.Location.Delegate(
+	indexLocationCommitment := must(cassert.Location.Invoke(
 		storageID,
-		space,
-		storageID.DID().String(),
-		cassert.LocationCaveats{
+		storageID.DID(),
+		&cassert.LocationArguments{
 			Space:    space.DID(),
-			Content:  ctypes.FromHash(indexDigest),
-			Location: []url.URL{*indexLocationURL},
+			Content:  indexDigest,
+			Location: []ctypes.CborURL{indexLocationURL},
 		},
+		invocation.WithAudience(space.DID()),
 	))
 
-	indexClaim := must(cassert.Index.Delegate(
+	indexClaim := must(cassert.Index.Invoke(
 		uploadServiceID,
-		indexingServiceID,
-		indexingServiceID.DID().String(),
-		cassert.IndexCaveats{
-			Content: blockLink,
-			Index:   indexLink,
+		uploadServiceID.DID(),
+		&cassert.IndexArguments{
+			Index: indexLink,
 		},
-		// delegation from indexing service to upload service allowing claims to be
-		// registered.
-		delegation.WithProof(
-			delegation.FromDelegation(
-				must(delegation.Delegate(
-					indexingServiceID,
-					uploadServiceID,
-					[]ucan.Capability[ucan.NoCaveats]{
-						ucan.NewCapability(
-							cassert.IndexAbility,
-							indexingServiceID.DID().String(),
-							ucan.NoCaveats{},
-						),
-					},
-				)),
-			),
-		),
+		invocation.WithAudience(indexingServiceID.DID()),
 	))
 
-	claims := map[cid.Cid]delegation.Delegation{
-		carLocationCommitment.Link().(cidlink.Link).Cid:   carLocationCommitment,
-		indexLocationCommitment.Link().(cidlink.Link).Cid: indexLocationCommitment,
-		indexClaim.Link().(cidlink.Link).Cid:              indexClaim,
+	claims := map[cid.Cid]ucan.Invocation{
+		carLocationCommitment.Link():   carLocationCommitment,
+		indexLocationCommitment.Link(): indexLocationCommitment,
+		indexClaim.Link():              indexClaim,
 	}
 
-	indexes := bytemap.NewByteMap[types.EncodedContextID, blobindex.ShardedDagIndexView](1)
+	indexes := bytemap.NewByteMap[types.EncodedContextID, blobindex.ShardedDagIndex](1)
 	indexes.Set(
 		must(types.ContextID{Space: &spaceDID, Hash: indexDigest}.ToEncoded()),
 		index,
 	)
 
 	result := must(queryresult.Build(claims, indexes))
-	resultBytes := must(io.ReadAll(car.Encode([]ipld.Link{result.Root().Link()}, result.Blocks())))
+
+	var resultBuf bytes.Buffer
+	writer := automobile.NewWriter(&resultBuf)
+	writer.WriteHeader([]cid.Cid{result.Root().Link})
+	for _, blk := range result.Blocks() {
+		if err := writer.WriteBlock(automobile.Block(blk)); err != nil {
+			panic(err)
+		}
+	}
 
 	// verify result can be read
-	must(queryresult.Extract(bytes.NewReader(resultBytes)))
+	must(queryresult.Extract(&resultBuf))
 
 	filename := fmt.Sprintf("%s.queryresult.car", must(multibase.Encode(multibase.Base58BTC, blockDigest)))
-	err := os.WriteFile(filename, resultBytes, 0644)
-	if err != nil {
+	if err := os.WriteFile(filename, resultBuf.Bytes(), 0644); err != nil {
 		panic(err)
 	}
 }
@@ -153,6 +147,7 @@ func randomURL() *url.URL {
 	return must(url.Parse(fmt.Sprintf("http://127.0.0.1:%d", port)))
 }
 
-func blobURL(base *url.URL, digest multihash.Multihash) *url.URL {
-	return base.JoinPath("/blob/%s", must(multibase.Encode(multibase.Base58BTC, digest)))
+func blobURL(base *url.URL, digest multihash.Multihash) ctypes.CborURL {
+	url := base.JoinPath("/blob/%s", must(multibase.Encode(multibase.Base58BTC, digest)))
+	return ctypes.CborURL(*url)
 }

@@ -3,7 +3,7 @@ package providerresults_test
 import (
 	"testing"
 
-	"github.com/fil-forge/go-libstoracha/testutil"
+	"github.com/fil-forge/indexing-service/pkg/internal/testutil"
 	"github.com/fil-forge/indexing-service/pkg/providerresults"
 	"github.com/ipni/go-libipni/find/model"
 	peer "github.com/libp2p/go-libp2p/core/peer"
@@ -15,7 +15,6 @@ func TestProviderResults__Equals(t *testing.T) {
 	testProvider := testutil.RandomProviderResult(t)
 	testProvider2 := testutil.RandomProviderResult(t)
 
-	// Create slightly modified versions of the testProvider
 	contextIDChanged := testProvider
 	contextIDChanged.ContextID = testutil.RandomBytes(t, 10)
 
@@ -64,10 +63,7 @@ func TestSerialization(t *testing.T) {
 		name       string
 		testResult model.ProviderResult
 	}{
-		{
-			name:       "random result",
-			testResult: randomResult,
-		},
+		{name: "random result", testResult: randomResult},
 		{
 			name: "empty peer ID",
 			testResult: model.ProviderResult{

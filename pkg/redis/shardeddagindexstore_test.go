@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/fil-forge/go-libstoracha/testutil"
+	"github.com/fil-forge/indexing-service/pkg/internal/testutil"
 	"github.com/fil-forge/indexing-service/pkg/redis"
 	"github.com/fil-forge/indexing-service/pkg/types"
 	"github.com/stretchr/testify/require"
@@ -13,8 +13,8 @@ import (
 func TestShardedDagIndexStore(t *testing.T) {
 	mockRedis := NewMockRedis()
 	shardedDagIndexStore := redis.NewShardedDagIndexStore(mockRedis)
-	hash1, index1 := testutil.RandomShardedDagIndexView(t, 32)
-	hash2, index2 := testutil.RandomShardedDagIndexView(t, 32)
+	hash1, index1 := testutil.RandomShardedDagIndex(t, 32)
+	hash2, index2 := testutil.RandomShardedDagIndex(t, 32)
 
 	aliceDid := testutil.Alice.DID()
 	encodedID1 := testutil.Must(types.ContextID{

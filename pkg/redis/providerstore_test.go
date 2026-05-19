@@ -4,9 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/fil-forge/go-libstoracha/testutil"
+	"github.com/fil-forge/indexing-service/pkg/internal/testutil"
 	"github.com/fil-forge/indexing-service/pkg/redis"
-	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	"github.com/ipni/go-libipni/find/model"
 	"github.com/multiformats/go-multihash"
 	"github.com/stretchr/testify/require"
@@ -32,11 +31,10 @@ func TestProviderStore(t *testing.T) {
 }
 
 func randomProviderResults(t *testing.T, num int) (multihash.Multihash, []model.ProviderResult) {
-	randomHash := testutil.RandomCID(t).(cidlink.Link).Cid.Hash()
+	randomHash := testutil.RandomCID(t).Hash()
 	providerResults := make([]model.ProviderResult, 0, num)
 	for i := 0; i < num; i++ {
 		providerResults = append(providerResults, testutil.RandomProviderResult(t))
 	}
-
 	return randomHash, providerResults
 }

@@ -1,31 +1,16 @@
 package client
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"reflect"
 	"time"
 
-	"github.com/fil-forge/go-libstoracha/capabilities/assert"
-	"github.com/fil-forge/go-libstoracha/capabilities/claim"
-	"github.com/fil-forge/go-libstoracha/digestutil"
-	"github.com/fil-forge/go-ucanto/client"
-	"github.com/fil-forge/go-ucanto/core/delegation"
-	"github.com/fil-forge/go-ucanto/core/invocation"
-	"github.com/fil-forge/go-ucanto/core/message"
-	"github.com/fil-forge/go-ucanto/core/receipt"
-	"github.com/fil-forge/go-ucanto/core/result"
-	"github.com/fil-forge/go-ucanto/core/result/failure"
-	fdm "github.com/fil-forge/go-ucanto/core/result/failure/datamodel"
-	unit "github.com/fil-forge/go-ucanto/core/result/ok"
-	udm "github.com/fil-forge/go-ucanto/core/result/ok/datamodel"
-	"github.com/fil-forge/go-ucanto/principal"
-	hcmsg "github.com/fil-forge/go-ucanto/transport/headercar/message"
-	ucan_http "github.com/fil-forge/go-ucanto/transport/http"
-	"github.com/fil-forge/go-ucanto/ucan"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/propagation"
@@ -33,6 +18,18 @@ import (
 
 	"github.com/fil-forge/indexing-service/pkg/service/queryresult"
 	"github.com/fil-forge/indexing-service/pkg/types"
+	assertcaps "github.com/fil-forge/libforge/capabilities/assert"
+	claimcaps "github.com/fil-forge/libforge/capabilities/claim"
+	"github.com/fil-forge/libforge/digestutil"
+	"github.com/fil-forge/libforge/ucan/retrieval"
+	"github.com/fil-forge/ucantone/client"
+	"github.com/fil-forge/ucantone/did"
+	edm "github.com/fil-forge/ucantone/errors/datamodel"
+	"github.com/fil-forge/ucantone/execution"
+	"github.com/fil-forge/ucantone/ucan"
+	"github.com/fil-forge/ucantone/ucan/container"
+	"github.com/fil-forge/ucantone/ucan/invocation"
+	cbg "github.com/whyrusleeping/cbor-gen"
 )
 
 const claimsPath = "/claims"
@@ -61,72 +58,79 @@ func (e ErrFailedResponse) Error() string {
 }
 
 type Client struct {
-	servicePrincipal ucan.Principal
+	servicePrincipal did.DID
 	serviceURL       url.URL
-	connection       client.Connection
+	client           *client.HTTPClient
 	httpClient       *http.Client
 	telemetryEnabled bool
 }
 
-func (c *Client) execute(ctx context.Context, inv invocation.Invocation) error {
-	resp, err := client.Execute(ctx, []invocation.Invocation{inv}, c.connection)
+// execute sends the given invocation using the provided client and decodes the
+// response into the specified type.
+func execute[T cbg.CBORUnmarshaler](
+	ctx context.Context,
+	client *client.HTTPClient,
+	inv ucan.Invocation,
+	options ...execution.RequestOption,
+) (T, ucan.Receipt, error) {
+	var zero T
+	resp, err := client.Execute(execution.NewRequest(ctx, inv, options...))
 	if err != nil {
-		return fmt.Errorf("sending invocation: %w", err)
-	}
-	rcptlnk, ok := resp.Get(inv.Link())
-	if !ok {
-		return ErrNoReceiptFound
+		return zero, nil, fmt.Errorf("executing invocation: %w", err)
 	}
 
-	reader, err := receipt.NewReceiptReaderFromTypes[unit.Unit, fdm.FailureModel](udm.UnitType(), fdm.FailureType())
-	if err != nil {
-		return fmt.Errorf("generating receipt reader: %w", err)
+	rcpt := resp.Receipt()
+
+	o, x := rcpt.Out().Unpack()
+	if rcpt.Out().IsErr() {
+		var model edm.ErrorModel
+		if err := model.UnmarshalCBOR(bytes.NewReader(x)); err != nil {
+			return zero, nil, fmt.Errorf("executing invocation")
+		}
+		return zero, nil, fmt.Errorf("executing invocation: %w", model)
 	}
 
-	rcpt, err := reader.Read(rcptlnk, resp.Blocks())
-	if err != nil {
-		return fmt.Errorf("reading receipt: %w", err)
+	// if ok is a pointer type, allocate the underlying value so
+	// UnmarshalCBOR has a non-nil pointer to write into.
+	var ok T
+	typ := reflect.TypeOf(ok)
+	if typ.Kind() == reflect.Ptr {
+		ok = reflect.New(typ.Elem()).Interface().(T)
 	}
+	if err := ok.UnmarshalCBOR(bytes.NewReader(o)); err != nil {
+		return zero, nil, fmt.Errorf("unmarshaling invocation response: %w", err)
+	}
+	return ok, rcpt, nil
+}
 
-	_, err = result.Unwrap(result.MapError(rcpt.Out(), failure.FromFailureModel))
+func (c *Client) PublishIndexClaim(ctx context.Context, issuer ucan.Signer, args assertcaps.IndexArguments, options ...invocation.Option) error {
+	inv, err := assertcaps.Index.Invoke(issuer, c.servicePrincipal, &args, options...)
+	if err != nil {
+		return fmt.Errorf("generating invocation: %w", err)
+	}
+	_, _, err = execute[*assertcaps.IndexOK](ctx, c.client, inv)
 	return err
 }
 
-func (c *Client) PublishIndexClaim(ctx context.Context, issuer principal.Signer, caveats assert.IndexCaveats, options ...delegation.Option) error {
-	inv, err := assert.Index.Invoke(issuer, c.servicePrincipal, c.servicePrincipal.DID().String(), caveats, options...)
+func (c *Client) PublishEqualsClaim(ctx context.Context, issuer ucan.Signer, args assertcaps.EqualsArguments, options ...invocation.Option) error {
+	inv, err := assertcaps.Equals.Invoke(issuer, c.servicePrincipal, &args, options...)
 	if err != nil {
 		return fmt.Errorf("generating invocation: %w", err)
 	}
-	return c.execute(ctx, inv)
+	_, _, err = execute[*assertcaps.EqualsOK](ctx, c.client, inv)
+	return err
 }
 
-func (c *Client) PublishEqualsClaim(ctx context.Context, issuer principal.Signer, caveats assert.EqualsCaveats, options ...delegation.Option) error {
-	inv, err := assert.Equals.Invoke(issuer, c.servicePrincipal, c.servicePrincipal.DID().String(), caveats, options...)
-	if err != nil {
-		return fmt.Errorf("generating invocation: %w", err)
-	}
-	return c.execute(ctx, inv)
-}
-
-func (c *Client) CacheClaim(ctx context.Context, issuer principal.Signer, cacheClaim delegation.Delegation, provider claim.Provider, options ...delegation.Option) error {
-	inv, err := claim.Cache.Invoke(issuer, c.servicePrincipal, c.servicePrincipal.DID().String(), claim.CacheCaveats{
+func (c *Client) CacheClaim(ctx context.Context, issuer ucan.Signer, cacheClaim ucan.Invocation, provider claimcaps.Provider, options ...invocation.Option) error {
+	inv, err := claimcaps.Cache.Invoke(issuer, c.servicePrincipal, &claimcaps.CacheArguments{
 		Claim:    cacheClaim.Link(),
 		Provider: provider,
 	}, options...)
 	if err != nil {
 		return fmt.Errorf("generating invocation: %w", err)
 	}
-
-	for blk, err := range cacheClaim.Blocks() {
-		if err != nil {
-			return fmt.Errorf("reading claim blocks: %w", err)
-		}
-		if err := inv.Attach(blk); err != nil {
-			return fmt.Errorf("attaching claim block: %w", err)
-		}
-	}
-
-	return c.execute(ctx, inv)
+	_, _, err = execute[*claimcaps.CacheOK](ctx, c.client, inv, execution.WithInvocations(cacheClaim))
+	return err
 }
 
 func (c *Client) QueryClaims(ctx context.Context, query types.Query) (types.QueryResult, error) {
@@ -161,21 +165,14 @@ func (c *Client) QueryClaims(ctx context.Context, query types.Query) (types.Quer
 		otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(req.Header))
 	}
 
-	// If there are query delegations, then add them to an X-Agent-Message header.
+	// If there are query delegations, then add them to an X-UCAN-Container header.
 	if len(query.Delegations) > 0 {
-		invs := make([]invocation.Invocation, 0, len(query.Delegations))
-		for _, d := range query.Delegations {
-			invs = append(invs, d)
-		}
-		msg, err := message.Build(invs, nil)
+		msg := container.New(container.WithDelegations(query.Delegations...))
+		headerValue, err := container.Encode(container.Base64urlGzip, msg)
 		if err != nil {
-			return nil, fmt.Errorf("building agent message: %w", err)
+			return nil, fmt.Errorf("encoding %q header: %w", retrieval.HTTPHeaderName, err)
 		}
-		headerValue, err := hcmsg.EncodeHeader(msg)
-		if err != nil {
-			return nil, fmt.Errorf("encoding %s header: %w", hcmsg.HeaderName, err)
-		}
-		req.Header.Set(hcmsg.HeaderName, headerValue)
+		req.Header.Set(retrieval.HTTPHeaderName, string(headerValue))
 	}
 
 	res, err := c.httpClient.Do(req)
@@ -216,7 +213,7 @@ func WithTelemetryEnabled(enabled bool) Option {
 	}
 }
 
-func New(servicePrincipal ucan.Principal, serviceURL url.URL, options ...Option) (*Client, error) {
+func New(servicePrincipal did.DID, serviceURL url.URL, options ...Option) (*Client, error) {
 	c := Client{
 		servicePrincipal: servicePrincipal,
 		serviceURL:       serviceURL,
@@ -225,11 +222,14 @@ func New(servicePrincipal ucan.Principal, serviceURL url.URL, options ...Option)
 	for _, opt := range options {
 		opt(&c)
 	}
-	channel := ucan_http.NewChannel(serviceURL.JoinPath(claimsPath), ucan_http.WithClient(c.httpClient))
-	conn, err := client.NewConnection(servicePrincipal, channel)
-	if err != nil {
-		return nil, fmt.Errorf("creating connection: %w", err)
+	clientOpts := []client.HTTPOption{}
+	if c.httpClient != nil {
+		clientOpts = append(clientOpts, client.WithHTTPClient(c.httpClient))
 	}
-	c.connection = conn
+	client, err := client.NewHTTP(&serviceURL, clientOpts...)
+	if err != nil {
+		return nil, fmt.Errorf("creating HTTP client: %w", err)
+	}
+	c.client = client
 	return &c, nil
 }

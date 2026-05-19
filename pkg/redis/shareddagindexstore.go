@@ -2,10 +2,9 @@ package redis
 
 import (
 	"bytes"
-	"io"
 
-	"github.com/fil-forge/go-libstoracha/blobindex"
 	"github.com/fil-forge/indexing-service/pkg/types"
+	"github.com/fil-forge/libforge/blobindex"
 )
 
 var (
@@ -13,27 +12,23 @@ var (
 )
 
 // ShardedDagIndexStore is a RedisStore for storing sharded dag indexes that implements types.ShardedDagIndexStore
-type ShardedDagIndexStore = Store[types.EncodedContextID, blobindex.ShardedDagIndexView]
+type ShardedDagIndexStore = Store[types.EncodedContextID, blobindex.ShardedDagIndex]
 
 // NewShardedDagIndexStore returns a new instance of a ShardedDagIndex store using the given redis client
 func NewShardedDagIndexStore(client Client, opts ...Option) *ShardedDagIndexStore {
 	return NewStore(shardedDagIndexFromRedis, shardedDagIndexToRedis, encodedContextIDKeyString, client, opts...)
 }
 
-func shardedDagIndexFromRedis(data string) (blobindex.ShardedDagIndexView, error) {
+func shardedDagIndexFromRedis(data string) (blobindex.ShardedDagIndex, error) {
 	return blobindex.Extract(bytes.NewReader([]byte(data)))
 }
 
-func shardedDagIndexToRedis(shardedDagIndex blobindex.ShardedDagIndexView) (string, error) {
-	r, err := shardedDagIndex.Archive()
-	if err != nil {
+func shardedDagIndexToRedis(shardedDagIndex blobindex.ShardedDagIndex) (string, error) {
+	var buf bytes.Buffer
+	if err := blobindex.Archive(shardedDagIndex, &buf); err != nil {
 		return "", err
 	}
-	data, err := io.ReadAll(r)
-	if err != nil {
-		return "", err
-	}
-	return string(data), nil
+	return buf.String(), nil
 }
 
 func encodedContextIDKeyString(encodedContextID types.EncodedContextID) string {

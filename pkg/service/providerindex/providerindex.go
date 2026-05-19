@@ -11,13 +11,12 @@ import (
 	"time"
 
 	"github.com/benbjohnson/clock"
-	"github.com/fil-forge/go-libstoracha/digestutil"
-	"github.com/fil-forge/go-libstoracha/ipnipublisher/publisher"
-	"github.com/fil-forge/go-libstoracha/metadata"
-	"github.com/fil-forge/go-ucanto/did"
-	"github.com/fil-forge/indexing-service/pkg/service/providerindex/legacy"
+	"github.com/fil-forge/go-ipni-tools/pkg/metadata"
+	"github.com/fil-forge/go-ipni-tools/pkg/publisher"
 	"github.com/fil-forge/indexing-service/pkg/telemetry"
 	"github.com/fil-forge/indexing-service/pkg/types"
+	"github.com/fil-forge/libforge/digestutil"
+	"github.com/fil-forge/ucantone/did"
 	logging "github.com/ipfs/go-log/v2"
 	ipnifind "github.com/ipni/go-libipni/find/client"
 	"github.com/ipni/go-libipni/find/model"
@@ -50,7 +49,6 @@ type ProviderIndexService struct {
 	noProviderStore types.NoProviderStore
 	findClient      ipnifind.Finder
 	asyncPublisher  publisher.AsyncPublisher
-	legacyClaims    legacy.ClaimsFinder
 	mutex           sync.Mutex
 	clock           clock.Clock
 	log             logging.EventLogger
@@ -81,7 +79,7 @@ func WithClock(clock clock.Clock) Option {
 	}
 }
 
-func New(providerStore types.ProviderStore, noProviderStore types.NoProviderStore, findClient ipnifind.Finder, asyncPublisher publisher.AsyncPublisher, legacyClaims legacy.ClaimsFinder, options ...Option) *ProviderIndexService {
+func New(providerStore types.ProviderStore, noProviderStore types.NoProviderStore, findClient ipnifind.Finder, asyncPublisher publisher.AsyncPublisher, options ...Option) *ProviderIndexService {
 	conf := config{}
 	for _, option := range options {
 		option(&conf)
@@ -97,7 +95,6 @@ func New(providerStore types.ProviderStore, noProviderStore types.NoProviderStor
 		noProviderStore: noProviderStore,
 		findClient:      findClient,
 		asyncPublisher:  asyncPublisher,
-		legacyClaims:    legacyClaims,
 		clock:           conf.clock,
 		log:             conf.log,
 	}
@@ -146,71 +143,13 @@ func (pi *ProviderIndexService) getProviderResults(ctx context.Context, mh mh.Mu
 		}
 	}
 
-	type queryResult struct {
-		results []model.ProviderResult
-		err     error
+	s.AddEvent("fetching from IPNI")
+	results, err := pi.fetchFromIPNI(ctx, s, mh, targetClaims)
+	s.AddEvent("fetched from IPNI", trace.WithAttributes(attribute.Bool("found", len(results) != 0)))
+	if err != nil {
+		return nil, fmt.Errorf("fetching from IPNI failed: %w", err)
 	}
-
-	// buffered channels so goroutines don't block.
-	ipniCh := make(chan queryResult, 1)
-	legacyCh := make(chan queryResult, 1)
-
-	// Create a cancelable context for the legacy query.
-	legacyCtx, cancelLegacy := context.WithCancel(ctx)
-	defer cancelLegacy()
-
-	// Start IPNI query.
-	go func() {
-		s.AddEvent("fetching from IPNI")
-		r, err := pi.fetchFromIPNI(ctx, s, mh, targetClaims)
-		s.AddEvent("fetched from IPNI", trace.WithAttributes(attribute.Bool("found", len(r) != 0)))
-		ipniCh <- queryResult{results: r, err: err}
-	}()
-
-	// Start legacy query.
-	go func() {
-		s.AddEvent("fetching from legacy services")
-		r, err := pi.legacyClaims.Find(legacyCtx, mh, targetClaims)
-		s.AddEvent("fetched from legacy services", trace.WithAttributes(attribute.Bool("found", len(r) != 0)))
-		legacyCh <- queryResult{results: r, err: err}
-	}()
-
-	var ipniRes, legacyRes queryResult
-
-	// Wait for both responses.
-	for i := 0; i < 2; i++ {
-		select {
-		case res := <-ipniCh:
-			ipniRes = res
-			// If IPNI returns valid data, cancel the legacy lookup.
-			if res.err == nil && len(res.results) > 0 {
-				cancelLegacy()
-			}
-		case res := <-legacyCh:
-			legacyRes = res
-		}
-	}
-
-	// Prioritize IPNI results.
-	if ipniRes.err == nil && len(ipniRes.results) > 0 {
-		pi.cacheResults(ctx, s, mh, ipniRes.results)
-		return ipniRes.results, nil
-	}
-	if legacyRes.err == nil && len(legacyRes.results) > 0 {
-		pi.cacheResults(ctx, s, mh, legacyRes.results)
-		return legacyRes.results, nil
-	}
-
-	// Neither query returned data: if error(s) is/are present join them and return as one wrapped error.
-	// NB(forrest): it is also acceptable to return no result and no error in the event nothing was found.
-	var queryError error
-	if ipniRes.err != nil {
-		queryError = errors.Join(queryError, fmt.Errorf("fetching from IPNI failed: %w", ipniRes.err))
-	}
-	if legacyRes.err != nil {
-		queryError = errors.Join(queryError, fmt.Errorf("fetching from legacy services failed: %w", legacyRes.err))
-	}
-	return nil, queryError
+	return results, nil
 }
 
 // Helper function to cache results.

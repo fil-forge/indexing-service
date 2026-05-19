@@ -9,15 +9,16 @@ import (
 	"io"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
-	"github.com/fil-forge/go-libstoracha/principalresolver"
-	"github.com/fil-forge/go-ucanto/did"
-	"github.com/fil-forge/go-ucanto/principal"
-	ed25519 "github.com/fil-forge/go-ucanto/principal/ed25519/signer"
-	"github.com/fil-forge/go-ucanto/principal/signer"
-	userver "github.com/fil-forge/go-ucanto/server"
-	"github.com/fil-forge/go-ucanto/validator"
+	"github.com/fil-forge/libforge/didresolver"
+	"github.com/fil-forge/ucantone/did"
+	"github.com/fil-forge/ucantone/principal"
+	"github.com/fil-forge/ucantone/principal/ed25519"
+	"github.com/fil-forge/ucantone/principal/signer"
+	userver "github.com/fil-forge/ucantone/server"
+	"github.com/fil-forge/ucantone/validator"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/ipni/go-libipni/maurl"
 	"github.com/ipni/go-libipni/metadata"
@@ -28,6 +29,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/fil-forge/indexing-service/pkg/construct"
+	"github.com/fil-forge/indexing-service/pkg/lib"
 	"github.com/fil-forge/indexing-service/pkg/presets"
 	"github.com/fil-forge/indexing-service/pkg/redis"
 	"github.com/fil-forge/indexing-service/pkg/server"
@@ -106,7 +108,7 @@ var serverCmd = &cli.Command{
 				&cli.StringSliceFlag{
 					Name:    "resolve-did-web",
 					EnvVars: []string{"RESOLVE_DID_WEB"},
-					Usage:   "did:web DIDs to resolve via HTTP (fetches /.well-known/did.json). Can be specified multiple times or comma-separated in env var.",
+					Usage:   "Patterns for restricting DID resolution via HTTP (fetches /.well-known/did.json). Can be specified multiple times or comma-separated in env var.",
 				},
 				&cli.BoolFlag{
 					Name:    "insecure-did-resolution",
@@ -157,45 +159,41 @@ var serverCmd = &cli.Command{
 
 				opts = append(opts, server.WithIdentity(id))
 
-				// Create principal resolver
-				var presolv validator.PrincipalResolver
-				resolveDIDs := cCtx.StringSlice("resolve-did-web")
-				if len(resolveDIDs) > 0 {
-					// Use HTTP-based resolution for specified DIDs
-					var webDIDs []did.DID
-					for _, d := range resolveDIDs {
-						parsed, err := did.Parse(d)
-						if err != nil {
-							return fmt.Errorf("parsing resolve-did-web DID %s: %w", d, err)
-						}
-						webDIDs = append(webDIDs, parsed)
-					}
-
-					var rslvOpts []principalresolver.Option
-					if cCtx.Bool("insecure-did-resolution") {
-						rslvOpts = append(rslvOpts, principalresolver.InsecureResolution())
-					}
-
-					httpResolver, err := principalresolver.NewHTTPResolver(webDIDs, rslvOpts...)
-					if err != nil {
-						return fmt.Errorf("creating HTTP principal resolver: %w", err)
-					}
-					presolv, err = principalresolver.NewCachedResolver(httpResolver, 24*time.Hour)
-					if err != nil {
-						return fmt.Errorf("creating cached resolver: %w", err)
-					}
-				} else {
-					// Fall back to static mapping from presets
-					staticResolver, err := principalresolver.NewMapResolver(presets.PrincipalMapping)
-					if err != nil {
-						return fmt.Errorf("creating principal resolver: %w", err)
-					}
-					presolv = staticResolver
+				// Create DID resolver
+				resolveDIDPatterns := cCtx.StringSlice("resolve-did-web")
+				// Use HTTP-based resolution for specified patterns
+				for i, d := range resolveDIDPatterns {
+					// remove "did:web:" prefix if present, since the resolver expects
+					// just the domain/path part
+					resolveDIDPatterns[i] = strings.TrimPrefix(d, "did:web:")
 				}
+				rslvOpts := []didresolver.Option{
+					didresolver.WithPatterns(resolveDIDPatterns...),
+				}
+				if cCtx.Bool("insecure-did-resolution") {
+					rslvOpts = append(rslvOpts, didresolver.InsecureResolution())
+				}
+
+				mapResolv, err := didresolver.NewMapResolver(presets.PrincipalMapping)
+				if err != nil {
+					return fmt.Errorf("creating map resolver: %w", err)
+				}
+				httpResolv, err := didresolver.NewHTTPResolver(rslvOpts...)
+				if err != nil {
+					return fmt.Errorf("creating HTTP resolver: %w", err)
+				}
+				cacheResolv, err := didresolver.NewCachedResolver(httpResolv.Resolve, time.Hour*3)
+				if err != nil {
+					return fmt.Errorf("creating cached HTTP resolver: %w", err)
+				}
+				tierResolv := didresolver.NewTieredResolver(mapResolv.Resolve, cacheResolv.Resolve)
+
 				opts = append(
 					opts,
 					server.WithContentClaimsOptions(
-						userver.WithPrincipalResolver(presolv.ResolveDIDKey),
+						userver.WithValidationOptions(
+							validator.WithDIDResolver(lib.NewDIDVerifierResolverAdapter(tierResolv.Resolve)),
+						),
 					),
 				)
 

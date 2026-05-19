@@ -7,7 +7,7 @@ package providercacher
 import (
 	"context"
 
-	"github.com/fil-forge/go-libstoracha/blobindex"
+	"github.com/fil-forge/libforge/blobindex"
 	"github.com/ipni/go-libipni/find/model"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -40,7 +40,7 @@ func (_m *MockProviderCacher) EXPECT() *MockProviderCacher_Expecter {
 }
 
 // CacheProviderForIndexRecords provides a mock function for the type MockProviderCacher
-func (_mock *MockProviderCacher) CacheProviderForIndexRecords(ctx context.Context, provider model.ProviderResult, index blobindex.ShardedDagIndexView) error {
+func (_mock *MockProviderCacher) CacheProviderForIndexRecords(ctx context.Context, provider model.ProviderResult, index blobindex.ShardedDagIndex) error {
 	ret := _mock.Called(ctx, provider, index)
 
 	if len(ret) == 0 {
@@ -48,7 +48,7 @@ func (_mock *MockProviderCacher) CacheProviderForIndexRecords(ctx context.Contex
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, model.ProviderResult, blobindex.ShardedDagIndexView) error); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, model.ProviderResult, blobindex.ShardedDagIndex) error); ok {
 		r0 = returnFunc(ctx, provider, index)
 	} else {
 		r0 = ret.Error(0)
@@ -64,12 +64,12 @@ type MockProviderCacher_CacheProviderForIndexRecords_Call struct {
 // CacheProviderForIndexRecords is a helper method to define mock.On call
 //   - ctx context.Context
 //   - provider model.ProviderResult
-//   - index blobindex.ShardedDagIndexView
+//   - index blobindex.ShardedDagIndex
 func (_e *MockProviderCacher_Expecter) CacheProviderForIndexRecords(ctx interface{}, provider interface{}, index interface{}) *MockProviderCacher_CacheProviderForIndexRecords_Call {
 	return &MockProviderCacher_CacheProviderForIndexRecords_Call{Call: _e.mock.On("CacheProviderForIndexRecords", ctx, provider, index)}
 }
 
-func (_c *MockProviderCacher_CacheProviderForIndexRecords_Call) Run(run func(ctx context.Context, provider model.ProviderResult, index blobindex.ShardedDagIndexView)) *MockProviderCacher_CacheProviderForIndexRecords_Call {
+func (_c *MockProviderCacher_CacheProviderForIndexRecords_Call) Run(run func(ctx context.Context, provider model.ProviderResult, index blobindex.ShardedDagIndex)) *MockProviderCacher_CacheProviderForIndexRecords_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -79,9 +79,9 @@ func (_c *MockProviderCacher_CacheProviderForIndexRecords_Call) Run(run func(ctx
 		if args[1] != nil {
 			arg1 = args[1].(model.ProviderResult)
 		}
-		var arg2 blobindex.ShardedDagIndexView
+		var arg2 blobindex.ShardedDagIndex
 		if args[2] != nil {
-			arg2 = args[2].(blobindex.ShardedDagIndexView)
+			arg2 = args[2].(blobindex.ShardedDagIndex)
 		}
 		run(
 			arg0,
@@ -97,7 +97,7 @@ func (_c *MockProviderCacher_CacheProviderForIndexRecords_Call) Return(err error
 	return _c
 }
 
-func (_c *MockProviderCacher_CacheProviderForIndexRecords_Call) RunAndReturn(run func(ctx context.Context, provider model.ProviderResult, index blobindex.ShardedDagIndexView) error) *MockProviderCacher_CacheProviderForIndexRecords_Call {
+func (_c *MockProviderCacher_CacheProviderForIndexRecords_Call) RunAndReturn(run func(ctx context.Context, provider model.ProviderResult, index blobindex.ShardedDagIndex) error) *MockProviderCacher_CacheProviderForIndexRecords_Call {
 	_c.Call.Return(run)
 	return _c
 }

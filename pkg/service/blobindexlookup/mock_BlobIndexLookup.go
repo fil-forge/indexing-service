@@ -7,8 +7,8 @@ package blobindexlookup
 import (
 	"context"
 
-	"github.com/fil-forge/go-libstoracha/blobindex"
 	"github.com/fil-forge/indexing-service/pkg/types"
+	"github.com/fil-forge/libforge/blobindex"
 	"github.com/ipni/go-libipni/find/model"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -41,23 +41,23 @@ func (_m *MockBlobIndexLookup) EXPECT() *MockBlobIndexLookup_Expecter {
 }
 
 // Find provides a mock function for the type MockBlobIndexLookup
-func (_mock *MockBlobIndexLookup) Find(ctx context.Context, contextID types.EncodedContextID, provider model.ProviderResult, req types.RetrievalRequest) (blobindex.ShardedDagIndexView, error) {
+func (_mock *MockBlobIndexLookup) Find(ctx context.Context, contextID types.EncodedContextID, provider model.ProviderResult, req types.RetrievalRequest) (blobindex.ShardedDagIndex, error) {
 	ret := _mock.Called(ctx, contextID, provider, req)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Find")
 	}
 
-	var r0 blobindex.ShardedDagIndexView
+	var r0 blobindex.ShardedDagIndex
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, types.EncodedContextID, model.ProviderResult, types.RetrievalRequest) (blobindex.ShardedDagIndexView, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, types.EncodedContextID, model.ProviderResult, types.RetrievalRequest) (blobindex.ShardedDagIndex, error)); ok {
 		return returnFunc(ctx, contextID, provider, req)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, types.EncodedContextID, model.ProviderResult, types.RetrievalRequest) blobindex.ShardedDagIndexView); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, types.EncodedContextID, model.ProviderResult, types.RetrievalRequest) blobindex.ShardedDagIndex); ok {
 		r0 = returnFunc(ctx, contextID, provider, req)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(blobindex.ShardedDagIndexView)
+			r0 = ret.Get(0).(blobindex.ShardedDagIndex)
 		}
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, types.EncodedContextID, model.ProviderResult, types.RetrievalRequest) error); ok {
@@ -110,12 +110,12 @@ func (_c *MockBlobIndexLookup_Find_Call) Run(run func(ctx context.Context, conte
 	return _c
 }
 
-func (_c *MockBlobIndexLookup_Find_Call) Return(shardedDagIndexView blobindex.ShardedDagIndexView, err error) *MockBlobIndexLookup_Find_Call {
-	_c.Call.Return(shardedDagIndexView, err)
+func (_c *MockBlobIndexLookup_Find_Call) Return(shardedDagIndex blobindex.ShardedDagIndex, err error) *MockBlobIndexLookup_Find_Call {
+	_c.Call.Return(shardedDagIndex, err)
 	return _c
 }
 
-func (_c *MockBlobIndexLookup_Find_Call) RunAndReturn(run func(ctx context.Context, contextID types.EncodedContextID, provider model.ProviderResult, req types.RetrievalRequest) (blobindex.ShardedDagIndexView, error)) *MockBlobIndexLookup_Find_Call {
+func (_c *MockBlobIndexLookup_Find_Call) RunAndReturn(run func(ctx context.Context, contextID types.EncodedContextID, provider model.ProviderResult, req types.RetrievalRequest) (blobindex.ShardedDagIndex, error)) *MockBlobIndexLookup_Find_Call {
 	_c.Call.Return(run)
 	return _c
 }

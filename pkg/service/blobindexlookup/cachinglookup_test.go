@@ -6,30 +6,24 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/fil-forge/go-libstoracha/blobindex"
-	"github.com/fil-forge/go-libstoracha/testutil"
+	"github.com/fil-forge/indexing-service/pkg/internal/testutil"
 	"github.com/fil-forge/indexing-service/pkg/service/blobindexlookup"
 	"github.com/fil-forge/indexing-service/pkg/service/providercacher"
 	"github.com/fil-forge/indexing-service/pkg/types"
+	"github.com/fil-forge/libforge/blobindex"
 	"github.com/ipni/go-libipni/find/model"
 	"github.com/stretchr/testify/require"
 )
 
 func TestWithCache__Find(t *testing.T) {
-
-	// Create a test CID
 	cachedContextID := testutil.RandomBytes(t, 16)
 	notCachedContextID := testutil.RandomBytes(t, 16)
-	// Create a cached index
-	_, cachedIndex := testutil.RandomShardedDagIndexView(t, 32)
-	_, notCachedIndex := testutil.RandomShardedDagIndexView(t, 32)
+	_, cachedIndex := testutil.RandomShardedDagIndex(t, 32)
+	_, notCachedIndex := testutil.RandomShardedDagIndex(t, 32)
 
-	// Create provider
 	provider := testutil.RandomProviderResult(t)
 
-	// sample error
 	anError := errors.New("something went wrong")
-	// Define test cases
 	testCases := []struct {
 		name           string
 		contextID      types.EncodedContextID
@@ -38,14 +32,14 @@ func TestWithCache__Find(t *testing.T) {
 		expectedErr    error
 		baseLookup     *mockBlobIndexLookup
 		providerCacher *mockCachingQueue
-		expectedIndex  blobindex.ShardedDagIndexView
-		finalState     map[string]blobindex.ShardedDagIndexView
+		expectedIndex  blobindex.ShardedDagIndex
+		finalState     map[string]blobindex.ShardedDagIndex
 	}{
 		{
 			name:          "Index cached",
 			contextID:     cachedContextID,
 			expectedIndex: cachedIndex,
-			finalState: map[string]blobindex.ShardedDagIndexView{
+			finalState: map[string]blobindex.ShardedDagIndex{
 				string(cachedContextID): cachedIndex,
 			},
 		},
@@ -53,7 +47,7 @@ func TestWithCache__Find(t *testing.T) {
 			name:          "Index not cached, successful fetch",
 			contextID:     notCachedContextID,
 			expectedIndex: notCachedIndex,
-			finalState: map[string]blobindex.ShardedDagIndexView{
+			finalState: map[string]blobindex.ShardedDagIndex{
 				string(cachedContextID):    cachedIndex,
 				string(notCachedContextID): notCachedIndex,
 			},
@@ -64,7 +58,7 @@ func TestWithCache__Find(t *testing.T) {
 			expectedIndex: nil,
 			getErr:        anError,
 			expectedErr:   fmt.Errorf("reading from index cache: %w", anError),
-			finalState: map[string]blobindex.ShardedDagIndexView{
+			finalState: map[string]blobindex.ShardedDagIndex{
 				string(cachedContextID): cachedIndex,
 			},
 		},
@@ -74,7 +68,7 @@ func TestWithCache__Find(t *testing.T) {
 			expectedIndex: nil,
 			setErr:        anError,
 			expectedErr:   fmt.Errorf("caching fetched index: %w", anError),
-			finalState: map[string]blobindex.ShardedDagIndexView{
+			finalState: map[string]blobindex.ShardedDagIndex{
 				string(cachedContextID): cachedIndex,
 			},
 		},
@@ -84,7 +78,7 @@ func TestWithCache__Find(t *testing.T) {
 			expectedIndex: nil,
 			baseLookup:    &mockBlobIndexLookup{nil, anError},
 			expectedErr:   fmt.Errorf("fetching underlying index: %w", anError),
-			finalState: map[string]blobindex.ShardedDagIndexView{
+			finalState: map[string]blobindex.ShardedDagIndex{
 				string(cachedContextID): cachedIndex,
 			},
 		},
@@ -94,20 +88,19 @@ func TestWithCache__Find(t *testing.T) {
 			expectedIndex:  nil,
 			providerCacher: &mockCachingQueue{anError},
 			expectedErr:    fmt.Errorf("queueing provider caching for index failed: %w", anError),
-			finalState: map[string]blobindex.ShardedDagIndexView{
+			finalState: map[string]blobindex.ShardedDagIndex{
 				string(cachedContextID):    cachedIndex,
 				string(notCachedContextID): notCachedIndex,
 			},
 		},
 	}
 
-	// Run test cases
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			mockStore := &MockShardedDagIndexStore{
 				setErr: tc.setErr,
 				getErr: tc.getErr,
-				indexes: map[string]blobindex.ShardedDagIndexView{
+				indexes: map[string]blobindex.ShardedDagIndex{
 					string(cachedContextID): cachedIndex,
 				},
 			}
@@ -119,10 +112,9 @@ func TestWithCache__Find(t *testing.T) {
 			if providerCacher == nil {
 				providerCacher = &mockCachingQueue{nil}
 			}
-			// Create ClaimLookup instance
 			cl := blobindexlookup.WithCache(lookup, mockStore, providerCacher)
 
-			req := types.NewRetrievalRequest(testutil.TestURL, nil, nil)
+			req := types.RetrievalRequest{URL: *testutil.TestURL}
 			index, err := cl.Find(context.Background(), tc.contextID, provider, req)
 			if tc.expectedErr != nil {
 				require.EqualError(t, err, tc.expectedErr.Error())
@@ -132,7 +124,7 @@ func TestWithCache__Find(t *testing.T) {
 			testutil.RequireEqualIndex(t, tc.expectedIndex, index)
 			finalState := tc.finalState
 			if finalState == nil {
-				finalState = make(map[string]blobindex.ShardedDagIndexView)
+				finalState = make(map[string]blobindex.ShardedDagIndex)
 			}
 			require.Equal(t, len(finalState), len(mockStore.indexes))
 			for c, index := range mockStore.indexes {
@@ -143,20 +135,18 @@ func TestWithCache__Find(t *testing.T) {
 	}
 }
 
-// MockShardedDagIndexStore is a mock implementation of the ShardedDagIndexStore interface
 type MockShardedDagIndexStore struct {
 	setErr, getErr error
-	indexes        map[string]blobindex.ShardedDagIndexView
+	indexes        map[string]blobindex.ShardedDagIndex
 }
 
 var _ types.ShardedDagIndexStore = &MockShardedDagIndexStore{}
 
-// SetExpirable implements types.ShardedDagIndexStore.
 func (m *MockShardedDagIndexStore) SetExpirable(ctx context.Context, contextID types.EncodedContextID, expires bool) error {
 	return nil
 }
 
-func (m *MockShardedDagIndexStore) Get(ctx context.Context, contextID types.EncodedContextID) (blobindex.ShardedDagIndexView, error) {
+func (m *MockShardedDagIndexStore) Get(ctx context.Context, contextID types.EncodedContextID) (blobindex.ShardedDagIndex, error) {
 	if m.getErr != nil {
 		return nil, m.getErr
 	}
@@ -167,7 +157,7 @@ func (m *MockShardedDagIndexStore) Get(ctx context.Context, contextID types.Enco
 	return index, nil
 }
 
-func (m *MockShardedDagIndexStore) Set(ctx context.Context, contextID types.EncodedContextID, index blobindex.ShardedDagIndexView, expire bool) error {
+func (m *MockShardedDagIndexStore) Set(ctx context.Context, contextID types.EncodedContextID, index blobindex.ShardedDagIndex, expire bool) error {
 	if m.setErr != nil {
 		return m.setErr
 	}
@@ -176,11 +166,11 @@ func (m *MockShardedDagIndexStore) Set(ctx context.Context, contextID types.Enco
 }
 
 type mockBlobIndexLookup struct {
-	index blobindex.ShardedDagIndexView
+	index blobindex.ShardedDagIndex
 	err   error
 }
 
-func (m *mockBlobIndexLookup) Find(ctx context.Context, contextID types.EncodedContextID, provider model.ProviderResult, req types.RetrievalRequest) (blobindex.ShardedDagIndexView, error) {
+func (m *mockBlobIndexLookup) Find(ctx context.Context, contextID types.EncodedContextID, provider model.ProviderResult, req types.RetrievalRequest) (blobindex.ShardedDagIndex, error) {
 	return m.index, m.err
 }
 
@@ -188,7 +178,6 @@ type mockCachingQueue struct {
 	err error
 }
 
-// QueueProviderCaching implements blobindexlookup.ProviderCacher.
 func (m *mockCachingQueue) Queue(ctx context.Context, job providercacher.ProviderCachingJob) error {
 	return m.err
 }

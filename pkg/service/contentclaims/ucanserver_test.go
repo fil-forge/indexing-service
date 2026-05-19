@@ -2,201 +2,114 @@ package contentclaims
 
 import (
 	"context"
-	"fmt"
+	"net/http/httptest"
 	"net/url"
 	"testing"
 
-	cassert "github.com/fil-forge/go-libstoracha/capabilities/assert"
-	"github.com/fil-forge/go-libstoracha/capabilities/claim"
-	ctypes "github.com/fil-forge/go-libstoracha/capabilities/types"
-	"github.com/fil-forge/go-libstoracha/testutil"
-	"github.com/fil-forge/go-ucanto/client"
-	"github.com/fil-forge/go-ucanto/core/delegation"
-	"github.com/fil-forge/go-ucanto/core/invocation"
-	"github.com/fil-forge/go-ucanto/core/receipt"
-	"github.com/fil-forge/go-ucanto/core/result"
-	unit "github.com/fil-forge/go-ucanto/core/result/ok"
-	"github.com/fil-forge/go-ucanto/did"
-	ed25519 "github.com/fil-forge/go-ucanto/principal/ed25519/signer"
-	"github.com/fil-forge/go-ucanto/principal/signer"
-	"github.com/fil-forge/go-ucanto/server"
-	"github.com/fil-forge/go-ucanto/ucan"
-	"github.com/fil-forge/indexing-service/pkg/principalresolver"
+	"github.com/fil-forge/indexing-service/pkg/internal/testutil"
 	"github.com/fil-forge/indexing-service/pkg/types"
-	"github.com/ipld/go-ipld-prime"
-	"github.com/ipld/go-ipld-prime/datamodel"
-	"github.com/ipld/go-ipld-prime/printer"
+	"github.com/fil-forge/libforge/capabilities"
+	assertcaps "github.com/fil-forge/libforge/capabilities/assert"
+	claimcaps "github.com/fil-forge/libforge/capabilities/claim"
+	"github.com/fil-forge/ucantone/client"
+	"github.com/fil-forge/ucantone/execution"
+	"github.com/fil-forge/ucantone/ucan"
+	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/require"
 )
 
-var rcptsch = []byte(`
-	type Result union {
-		| Unit "ok"
-		| Any "error"
-	} representation keyed
-
-	type Unit struct {}
-`)
-
 func TestServer(t *testing.T) {
-	server, err := NewUCANServer(testutil.Service, &mockIndexer{})
+	srv, err := NewUCANServer(testutil.Service, &mockIndexer{})
 	require.NoError(t, err)
 
-	conn, err := client.NewConnection(testutil.Service, server)
+	httpSrv := httptest.NewServer(srv)
+	t.Cleanup(httpSrv.Close)
+
+	srvURL, err := url.Parse(httpSrv.URL)
 	require.NoError(t, err)
 
-	locationCommitment := testutil.Must(cassert.Location.Delegate(testutil.Alice,
+	httpClient, err := client.NewHTTP(srvURL)
+	require.NoError(t, err)
+
+	// Build a self-signed location commitment to attach to the cache invocation.
+	locationCommitment := testutil.Must(assertcaps.Location.Invoke(
 		testutil.Alice,
-		testutil.Alice.DID().String(),
-		cassert.LocationCaveats{
-			Content:  ctypes.FromHash(testutil.RandomMultihash(t)),
-			Location: []url.URL{*testutil.Must(url.Parse("https://www.yahoo.com"))(t)},
+		testutil.Alice.DID(),
+		&assertcaps.LocationArguments{
 			Space:    testutil.Bob.DID(),
-		}))(t)
+			Content:  testutil.RandomMultihash(t),
+			Location: []capabilities.CborURL{capabilities.CborURL(*testutil.TestURL)},
+		},
+	))(t)
 
-	cacheInvocation := testutil.Must(claim.Cache.Invoke(testutil.Service,
+	cacheInvocation := testutil.Must(claimcaps.Cache.Invoke(
 		testutil.Service,
-		testutil.Service.DID().String(), claim.CacheCaveats{
+		testutil.Service.DID(),
+		&claimcaps.CacheArguments{
 			Claim: locationCommitment.Link(),
-			Provider: claim.Provider{
-				Addresses: []multiaddr.Multiaddr{testutil.RandomMultiaddr(t)},
+			Provider: claimcaps.Provider{
+				Addresses: [][]byte{testutil.RandomMultiaddr(t).Bytes()},
 			},
-		}))(t)
-	for b, err := range locationCommitment.Blocks() {
-		if err != nil {
-			t.Logf("iterating claim blocks: %s", err)
-			t.FailNow()
-		}
-		require.NoError(t, cacheInvocation.Attach(b))
+		},
+	))(t)
+
+	invs := []struct {
+		name string
+		inv  ucan.Invocation
+		opts []execution.RequestOption
+	}{
+		{
+			name: assertcaps.EqualsCommand,
+			inv: testutil.Must(assertcaps.Equals.Invoke(
+				testutil.Service,
+				testutil.Service.DID(),
+				&assertcaps.EqualsArguments{
+					Content: testutil.RandomMultihash(t),
+					Equals:  testutil.RandomCID(t),
+				},
+			))(t),
+		},
+		{
+			name: assertcaps.IndexCommand,
+			inv: testutil.Must(assertcaps.Index.Invoke(
+				testutil.Service,
+				testutil.Service.DID(),
+				&assertcaps.IndexArguments{
+					Index: testutil.RandomCID(t),
+				},
+			))(t),
+		},
+		{
+			name: claimcaps.CacheCommand,
+			inv:  cacheInvocation,
+			opts: []execution.RequestOption{execution.WithInvocations(locationCommitment)},
+		},
 	}
-	invs := []invocation.Invocation{
-		testutil.Must(cassert.Equals.Invoke(
-			testutil.Service,
-			testutil.Service,
-			testutil.Service.DID().String(),
-			cassert.EqualsCaveats{
-				Content: ctypes.FromHash(testutil.RandomMultihash(t)),
-				Equals:  testutil.RandomCID(t),
-			},
-		))(t),
-		testutil.Must(cassert.Index.Invoke(
-			testutil.Service,
-			testutil.Service,
-			testutil.Service.DID().String(),
-			cassert.IndexCaveats{
-				Content: testutil.RandomCID(t),
-				Index:   testutil.RandomCID(t),
-			},
-		))(t),
-		cacheInvocation,
-	}
 
-	for _, inv := range invs {
-		t.Run(inv.Capabilities()[0].Can(), func(t *testing.T) {
-			resp, err := client.Execute(t.Context(), []invocation.Invocation{inv}, conn)
+	for _, tc := range invs {
+		t.Run(tc.name, func(t *testing.T) {
+			resp, err := httpClient.Execute(execution.NewRequest(t.Context(), tc.inv, tc.opts...))
 			require.NoError(t, err)
-
-			rcptlnk, ok := resp.Get(inv.Link())
-			require.True(t, ok, "missing receipt for invocation: %s", inv.Link())
-
-			reader, err := receipt.NewReceiptReader[unit.Unit, datamodel.Node](rcptsch)
-			require.NoError(t, err)
-
-			rcpt, err := reader.Read(rcptlnk, resp.Blocks())
-			require.NoError(t, err)
-
-			result.MatchResultR0(rcpt.Out(), func(ok unit.Unit) {
-				fmt.Printf("%+v\n", ok)
-			}, func(x datamodel.Node) {
-				require.Fail(t, "unexpected failure")
-			})
+			require.False(t, resp.Receipt().Out().IsErr(), "unexpected failure")
 		})
 	}
 }
 
-func TestPrincipalResolver(t *testing.T) {
-	// simulate the upload service (a did:web) issuing an invocation to the
-	// indexing service
-	uploadID, err := ed25519.Generate()
-	require.NoError(t, err)
+type mockIndexer struct{}
 
-	uploadIDWeb, err := signer.Wrap(uploadID, testutil.Must(did.Parse("did:web:upload.storacha.network"))(t))
-	require.NoError(t, err)
-
-	presolv, err := principalresolver.New(map[string]string{
-		uploadIDWeb.DID().String(): uploadIDWeb.Unwrap().DID().String(),
-	})
-	require.NoError(t, err)
-
-	server, err := NewUCANServer(testutil.Service, &mockIndexer{}, server.WithPrincipalResolver(presolv.ResolveDIDKey))
-	require.NoError(t, err)
-
-	proof := delegation.FromDelegation(
-		testutil.Must(
-			delegation.Delegate(
-				testutil.Service,
-				uploadIDWeb,
-				[]ucan.Capability[ucan.NoCaveats]{
-					ucan.NewCapability(cassert.EqualsAbility, testutil.Service.DID().String(), ucan.NoCaveats{}),
-				},
-			),
-		)(t),
-	)
-
-	inv := testutil.Must(cassert.Equals.Invoke(
-		uploadIDWeb,
-		testutil.Service,
-		testutil.Service.DID().String(),
-		cassert.EqualsCaveats{
-			Content: ctypes.FromHash(testutil.RandomMultihash(t)),
-			Equals:  testutil.RandomCID(t),
-		},
-		delegation.WithProof(proof),
-	))(t)
-
-	conn, err := client.NewConnection(testutil.Service, server)
-	require.NoError(t, err)
-
-	resp, err := client.Execute(t.Context(), []invocation.Invocation{inv}, conn)
-	require.NoError(t, err)
-
-	rcptlnk, ok := resp.Get(inv.Link())
-	require.True(t, ok, "missing receipt for invocation: %s", inv.Link())
-
-	reader, err := receipt.NewReceiptReader[unit.Unit, datamodel.Node](rcptsch)
-	require.NoError(t, err)
-
-	rcpt, err := reader.Read(rcptlnk, resp.Blocks())
-	require.NoError(t, err)
-
-	result.MatchResultR0(rcpt.Out(), func(ok unit.Unit) {
-		fmt.Printf("%+v\n", ok)
-	}, func(x datamodel.Node) {
-		fmt.Println(printer.Sprint(x))
-		require.Fail(t, "unexpected failure")
-	})
-}
-
-type mockIndexer struct {
-}
-
-func (m *mockIndexer) Get(ctx context.Context, claim ipld.Link) (delegation.Delegation, error) {
+func (m *mockIndexer) Get(ctx context.Context, claim cid.Cid) (ucan.Invocation, error) {
 	return nil, nil
 }
 
-// Cache implements types.Service.
-func (m *mockIndexer) Cache(ctx context.Context, provider peer.AddrInfo, claim delegation.Delegation) error {
+func (m *mockIndexer) Cache(ctx context.Context, provider peer.AddrInfo, claim ucan.Invocation, meta ucan.Container) error {
 	return nil
 }
 
-// Publish implements types.Service.
-func (m *mockIndexer) Publish(ctx context.Context, claim delegation.Delegation) error {
+func (m *mockIndexer) Publish(ctx context.Context, claim ucan.Invocation, meta ucan.Container) error {
 	return nil
 }
 
-// Query implements types.Service.
 func (m *mockIndexer) Query(ctx context.Context, q types.Query) (types.QueryResult, error) {
 	return nil, nil
 }

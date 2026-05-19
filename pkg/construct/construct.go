@@ -6,26 +6,24 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"strings"
 	"time"
 
-	"github.com/fil-forge/go-libstoracha/ipniclient"
-	"github.com/fil-forge/go-libstoracha/ipnipublisher/notifier"
-	"github.com/fil-forge/go-libstoracha/ipnipublisher/publisher"
-	"github.com/fil-forge/go-libstoracha/ipnipublisher/server"
-	"github.com/fil-forge/go-libstoracha/ipnipublisher/store"
-	"github.com/fil-forge/go-libstoracha/jobqueue"
-	"github.com/fil-forge/go-libstoracha/metadata"
-	"github.com/fil-forge/go-ucanto/principal"
+	ipniclient "github.com/fil-forge/go-ipni-tools/pkg/client"
+	"github.com/fil-forge/go-ipni-tools/pkg/metadata"
+	"github.com/fil-forge/go-ipni-tools/pkg/notifier"
+	"github.com/fil-forge/go-ipni-tools/pkg/publisher"
+	"github.com/fil-forge/go-ipni-tools/pkg/server"
+	"github.com/fil-forge/go-ipni-tools/pkg/store"
 	"github.com/fil-forge/indexing-service/pkg/redis"
 	"github.com/fil-forge/indexing-service/pkg/service"
 	"github.com/fil-forge/indexing-service/pkg/service/blobindexlookup"
 	"github.com/fil-forge/indexing-service/pkg/service/contentclaims"
 	"github.com/fil-forge/indexing-service/pkg/service/providercacher"
 	"github.com/fil-forge/indexing-service/pkg/service/providerindex"
-	"github.com/fil-forge/indexing-service/pkg/service/providerindex/legacy"
 	"github.com/fil-forge/indexing-service/pkg/service/providerindex/remotesyncer"
 	"github.com/fil-forge/indexing-service/pkg/types"
+	"github.com/fil-forge/libforge/jobqueue"
+	"github.com/fil-forge/ucantone/principal"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	dssync "github.com/ipfs/go-datastore/sync"
@@ -101,11 +99,8 @@ type config struct {
 	claimsCacheOpts      []redis.Option
 	indexesCacheOpts     []redis.Option
 
-	legacyClaimsMappers []legacy.ContentToClaimsMapper
-	legacyClaimsBucket  types.ContentClaimsStore
-	legacyClaimsUrl     string
-	httpClient          *http.Client
-	provIndexLog        logging.EventLogger
+	httpClient   *http.Client
+	provIndexLog logging.EventLogger
 }
 
 // DefaultHTTPClient creates a HTTP client with sensible defaults
@@ -232,16 +227,6 @@ func WithClaimsClient(client redis.Client) Option {
 func WithIndexesClient(client redis.Client) Option {
 	return func(cfg *config) error {
 		cfg.indexesClient = client
-		return nil
-	}
-}
-
-// WithLegacyClaims configures the service to find claims on legacy systems and storage
-func WithLegacyClaims(legacyClaimsMappers []legacy.ContentToClaimsMapper, legacyClaimsBucket types.ContentClaimsStore, legacyClaimsUrl string) Option {
-	return func(cfg *config) error {
-		cfg.legacyClaimsMappers = legacyClaimsMappers
-		cfg.legacyClaimsBucket = legacyClaimsBucket
-		cfg.legacyClaimsUrl = legacyClaimsUrl
 		return nil
 	}
 }
@@ -468,23 +453,7 @@ func Construct(sc ServiceConfig, opts ...Option) (Service, error) {
 		s.shutdownFuncs = append(s.shutdownFuncs, srv.Shutdown)
 	}
 
-	// build read through fetchers
-	// TODO: add sender / publisher / linksystem
-	var legacyClaims legacy.ClaimsFinder
-	if len(cfg.legacyClaimsMappers) > 0 && cfg.legacyClaimsBucket != nil {
-		if !strings.Contains(cfg.legacyClaimsUrl, service.ClaimUrlPlaceholder) {
-			return nil, fmt.Errorf("legacy claims url %s must contain the claim placeholder %s", cfg.legacyClaimsUrl, service.ClaimUrlPlaceholder)
-		}
-		legacyFinder := contentclaims.WithIdentityCids(contentclaims.WithCache(contentclaims.WithStore(contentclaims.NewNotFoundFinder(), cfg.legacyClaimsBucket), claimsCache))
-		legacyClaims, err = legacy.NewClaimsStore(cfg.legacyClaimsMappers, legacyFinder, cfg.legacyClaimsUrl)
-		if err != nil {
-			return nil, fmt.Errorf("creating legacy claims store: %w", err)
-		}
-	} else {
-		legacyClaims = legacy.NewNoResultsClaimsFinder()
-	}
-
-	providerIndex := providerindex.New(providersCache, noProvidersCache, findClient, asyncPublisher, legacyClaims, providerindex.WithLogger(cfg.provIndexLog))
+	providerIndex := providerindex.New(providersCache, noProvidersCache, findClient, asyncPublisher, providerindex.WithLogger(cfg.provIndexLog))
 
 	claimsStore := cfg.claimsStore
 	if claimsStore == nil {
@@ -495,9 +464,7 @@ func Construct(sc ServiceConfig, opts ...Option) (Service, error) {
 	}
 
 	finder := contentclaims.NewSimpleFinder(httpClient)
-	if cfg.legacyClaimsBucket != nil {
-		finder = contentclaims.WithStore(finder, cfg.legacyClaimsBucket)
-	}
+
 	claims := contentclaims.New(claimsStore, claimsCache, finder)
 	blobIndexLookup := blobindexlookup.WithCache(
 		blobindexlookup.NewBlobIndexLookup(httpClient),

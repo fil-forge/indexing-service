@@ -7,42 +7,37 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/fil-forge/go-libstoracha/testutil"
-	"github.com/fil-forge/go-ucanto/core/delegation"
-	"github.com/fil-forge/go-ucanto/core/ipld"
+	"github.com/fil-forge/indexing-service/pkg/internal/testutil"
 	"github.com/fil-forge/indexing-service/pkg/service/contentclaims"
 	"github.com/fil-forge/indexing-service/pkg/types"
+	"github.com/fil-forge/ucantone/ucan"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 )
 
 func TestWithCache__Find(t *testing.T) {
-	// Create a cached claim
-	cachedClaim := testutil.RandomLocationDelegation(t)
-	notCachedClaim := testutil.RandomIndexDelegation(t)
+	cachedClaim := testutil.RandomLocationCommitment(t)
+	notCachedClaim := testutil.RandomIndexClaim(t)
 
-	// Create a test CID
 	cachedCid := cachedClaim.Link()
 	notCachedCid := notCachedClaim.Link()
 
-	// sample error
 	anError := errors.New("something went wrong")
-	// Define test cases
 	testCases := []struct {
 		name          string
-		claimCid      ipld.Link
+		claimCid      cid.Cid
 		setErr        error
 		getErr        error
 		expectedErr   error
 		baseFinder    *mockFinder
-		expectedClaim delegation.Delegation
-		finalState    map[string]delegation.Delegation
+		expectedClaim ucan.Invocation
+		finalState    map[string]ucan.Invocation
 	}{
 		{
 			name:          "Claim cached",
 			claimCid:      cachedCid,
 			expectedClaim: cachedClaim,
-			finalState: map[string]delegation.Delegation{
+			finalState: map[string]ucan.Invocation{
 				cachedCid.String(): cachedClaim,
 			},
 		},
@@ -50,7 +45,7 @@ func TestWithCache__Find(t *testing.T) {
 			name:          "Claim not cached, successful fetch",
 			claimCid:      notCachedCid,
 			expectedClaim: notCachedClaim,
-			finalState: map[string]delegation.Delegation{
+			finalState: map[string]ucan.Invocation{
 				cachedCid.String():    cachedClaim,
 				notCachedCid.String(): notCachedClaim,
 			},
@@ -61,7 +56,7 @@ func TestWithCache__Find(t *testing.T) {
 			expectedClaim: nil,
 			getErr:        anError,
 			expectedErr:   fmt.Errorf("reading from claim cache: %w", anError),
-			finalState: map[string]delegation.Delegation{
+			finalState: map[string]ucan.Invocation{
 				cachedCid.String(): cachedClaim,
 			},
 		},
@@ -71,7 +66,7 @@ func TestWithCache__Find(t *testing.T) {
 			expectedClaim: nil,
 			setErr:        anError,
 			expectedErr:   fmt.Errorf("caching claim: %w", anError),
-			finalState: map[string]delegation.Delegation{
+			finalState: map[string]ucan.Invocation{
 				cachedCid.String(): cachedClaim,
 			},
 		},
@@ -81,28 +76,25 @@ func TestWithCache__Find(t *testing.T) {
 			expectedClaim: nil,
 			baseFinder:    &mockFinder{nil, anError},
 			expectedErr:   anError,
-			finalState: map[string]delegation.Delegation{
+			finalState: map[string]ucan.Invocation{
 				cachedCid.String(): cachedClaim,
 			},
 		},
 	}
 
-	// Run test cases
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			mockCache := &MockContentClaimsCache{
 				setErr: tc.setErr,
 				getErr: tc.getErr,
-				claims: map[string]delegation.Delegation{
+				claims: map[string]ucan.Invocation{
 					cachedCid.String(): cachedClaim,
 				},
 			}
-			// generate a test server for requests
 			finder := tc.baseFinder
 			if finder == nil {
 				finder = &mockFinder{notCachedClaim, nil}
 			}
-			// Create ClaimLookup instance
 			cl := contentclaims.WithCache(finder, mockCache)
 
 			claim, err := cl.Find(context.Background(), tc.claimCid, testutil.TestURL)
@@ -111,34 +103,32 @@ func TestWithCache__Find(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 			}
-			testutil.RequireEqualDelegation(t, tc.expectedClaim, claim)
+			testutil.RequireEqualClaim(t, tc.expectedClaim, claim)
 			finalState := tc.finalState
 			if finalState == nil {
-				finalState = make(map[string]delegation.Delegation)
+				finalState = make(map[string]ucan.Invocation)
 			}
 			require.Equal(t, len(finalState), len(mockCache.claims))
 			for c, claim := range mockCache.claims {
 				expectedClaim := finalState[c]
-				testutil.RequireEqualDelegation(t, expectedClaim, claim)
+				testutil.RequireEqualClaim(t, expectedClaim, claim)
 			}
 		})
 	}
 }
 
-// MockContentClaimsCache is a mock implementation of the ContentClaimsCache interface
 type MockContentClaimsCache struct {
 	setErr, getErr error
-	claims         map[string]delegation.Delegation
+	claims         map[string]ucan.Invocation
 }
 
 var _ types.ContentClaimsCache = &MockContentClaimsCache{}
 
-// SetExpirable implements types.ContentClaimsStore.
 func (m *MockContentClaimsCache) SetExpirable(ctx context.Context, key cid.Cid, expires bool) error {
 	return nil
 }
 
-func (m *MockContentClaimsCache) Get(ctx context.Context, claimCid cid.Cid) (delegation.Delegation, error) {
+func (m *MockContentClaimsCache) Get(ctx context.Context, claimCid cid.Cid) (ucan.Invocation, error) {
 	if m.getErr != nil {
 		return nil, m.getErr
 	}
@@ -149,7 +139,7 @@ func (m *MockContentClaimsCache) Get(ctx context.Context, claimCid cid.Cid) (del
 	return claim, nil
 }
 
-func (m *MockContentClaimsCache) Set(ctx context.Context, claimCid cid.Cid, claim delegation.Delegation, expires bool) error {
+func (m *MockContentClaimsCache) Set(ctx context.Context, claimCid cid.Cid, claim ucan.Invocation, expires bool) error {
 	if m.setErr != nil {
 		return m.setErr
 	}
@@ -158,15 +148,15 @@ func (m *MockContentClaimsCache) Set(ctx context.Context, claimCid cid.Cid, clai
 }
 
 type mockFinder struct {
-	claim delegation.Delegation
+	claim ucan.Invocation
 	err   error
 }
 
-func (m *mockFinder) Find(ctx context.Context, link ipld.Link, url *url.URL) (delegation.Delegation, error) {
+func (m *mockFinder) Find(ctx context.Context, id cid.Cid, _ *url.URL) (ucan.Invocation, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
-	if m.claim == nil || m.claim.Link().String() != link.String() {
+	if m.claim == nil || m.claim.Link() != id {
 		return nil, types.ErrKeyNotFound
 	}
 	return m.claim, nil

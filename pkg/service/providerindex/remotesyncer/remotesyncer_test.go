@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fil-forge/go-libstoracha/bytemap"
-	"github.com/fil-forge/go-libstoracha/testutil"
+	"github.com/fil-forge/indexing-service/pkg/internal/testutil"
+	"github.com/fil-forge/libforge/bytemap"
 	"github.com/fil-forge/indexing-service/pkg/types"
 	"github.com/ipfs/go-cid"
 	"github.com/ipld/go-ipld-prime"

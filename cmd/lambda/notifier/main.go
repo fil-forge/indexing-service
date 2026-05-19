@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
-	"github.com/fil-forge/go-libstoracha/ipnipublisher/notifier"
+	"github.com/fil-forge/go-ipni-tools/pkg/notifier"
 	"github.com/fil-forge/indexing-service/cmd/lambda"
 	"github.com/fil-forge/indexing-service/pkg/aws"
 	logging "github.com/ipfs/go-log/v2"

@@ -3,12 +3,12 @@ package contentclaims
 import (
 	"context"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 
-	"github.com/fil-forge/go-ucanto/core/delegation"
-	"github.com/ipld/go-ipld-prime"
+	"github.com/fil-forge/ucantone/ucan"
+	"github.com/fil-forge/ucantone/ucan/invocation"
+	"github.com/ipfs/go-cid"
 )
 
 // simpleFinder is a read through cache for fetching content claims
@@ -26,7 +26,7 @@ func NewSimpleFinder(httpClient *http.Client) Finder {
 }
 
 // Find attempts to fetch a claim from the provided URL.
-func (sf *simpleFinder) Find(ctx context.Context, id ipld.Link, fetchURL *url.URL) (delegation.Delegation, error) {
+func (sf *simpleFinder) Find(ctx context.Context, id cid.Cid, fetchURL *url.URL) (ucan.Invocation, error) {
 	// attempt to fetch the claim from provided url
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fetchURL.String(), nil)
 	if err != nil {
@@ -37,19 +37,14 @@ func (sf *simpleFinder) Find(ctx context.Context, id ipld.Link, fetchURL *url.UR
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch claim: %w", err)
 	}
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("reading fetched claim body: %w", err)
+	defer resp.Body.Close()
+
+	var claim invocation.Invocation
+	if err := claim.UnmarshalCBOR(resp.Body); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal claim: %w", err)
 	}
-	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return nil, fmt.Errorf("failure response fetching claim. URL: %s, status: %s, message: %s", fetchURL.String(), resp.Status, string(body))
+	if id != claim.Link() {
+		return nil, fmt.Errorf("received claim: %s, does not match expected claim: %s", claim.Link(), id)
 	}
-	dlg, err := delegation.Extract(body)
-	if err != nil {
-		return nil, fmt.Errorf("extracting delegation from archive: %w", err)
-	}
-	if id.String() != dlg.Link().String() {
-		return nil, fmt.Errorf("received delegation: %s, does not match expected delegation: %s", dlg.Link(), id)
-	}
-	return dlg, nil
+	return &claim, nil
 }

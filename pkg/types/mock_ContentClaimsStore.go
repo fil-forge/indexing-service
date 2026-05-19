@@ -7,8 +7,8 @@ package types
 import (
 	"context"
 
-	"github.com/fil-forge/go-ucanto/core/delegation"
-	"github.com/fil-forge/go-ucanto/core/ipld"
+	"github.com/fil-forge/ucantone/ucan"
+	"github.com/ipfs/go-cid"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -40,26 +40,26 @@ func (_m *MockContentClaimsStore) EXPECT() *MockContentClaimsStore_Expecter {
 }
 
 // Get provides a mock function for the type MockContentClaimsStore
-func (_mock *MockContentClaimsStore) Get(ctx context.Context, key ipld.Link) (delegation.Delegation, error) {
+func (_mock *MockContentClaimsStore) Get(ctx context.Context, key cid.Cid) (ucan.Invocation, error) {
 	ret := _mock.Called(ctx, key)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Get")
 	}
 
-	var r0 delegation.Delegation
+	var r0 ucan.Invocation
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, ipld.Link) (delegation.Delegation, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, cid.Cid) (ucan.Invocation, error)); ok {
 		return returnFunc(ctx, key)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, ipld.Link) delegation.Delegation); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, cid.Cid) ucan.Invocation); ok {
 		r0 = returnFunc(ctx, key)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(delegation.Delegation)
+			r0 = ret.Get(0).(ucan.Invocation)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, ipld.Link) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, cid.Cid) error); ok {
 		r1 = returnFunc(ctx, key)
 	} else {
 		r1 = ret.Error(1)
@@ -74,20 +74,20 @@ type MockContentClaimsStore_Get_Call struct {
 
 // Get is a helper method to define mock.On call
 //   - ctx context.Context
-//   - key ipld.Link
+//   - key cid.Cid
 func (_e *MockContentClaimsStore_Expecter) Get(ctx interface{}, key interface{}) *MockContentClaimsStore_Get_Call {
 	return &MockContentClaimsStore_Get_Call{Call: _e.mock.On("Get", ctx, key)}
 }
 
-func (_c *MockContentClaimsStore_Get_Call) Run(run func(ctx context.Context, key ipld.Link)) *MockContentClaimsStore_Get_Call {
+func (_c *MockContentClaimsStore_Get_Call) Run(run func(ctx context.Context, key cid.Cid)) *MockContentClaimsStore_Get_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 ipld.Link
+		var arg1 cid.Cid
 		if args[1] != nil {
-			arg1 = args[1].(ipld.Link)
+			arg1 = args[1].(cid.Cid)
 		}
 		run(
 			arg0,
@@ -97,18 +97,18 @@ func (_c *MockContentClaimsStore_Get_Call) Run(run func(ctx context.Context, key
 	return _c
 }
 
-func (_c *MockContentClaimsStore_Get_Call) Return(delegation1 delegation.Delegation, err error) *MockContentClaimsStore_Get_Call {
-	_c.Call.Return(delegation1, err)
+func (_c *MockContentClaimsStore_Get_Call) Return(invocation ucan.Invocation, err error) *MockContentClaimsStore_Get_Call {
+	_c.Call.Return(invocation, err)
 	return _c
 }
 
-func (_c *MockContentClaimsStore_Get_Call) RunAndReturn(run func(ctx context.Context, key ipld.Link) (delegation.Delegation, error)) *MockContentClaimsStore_Get_Call {
+func (_c *MockContentClaimsStore_Get_Call) RunAndReturn(run func(ctx context.Context, key cid.Cid) (ucan.Invocation, error)) *MockContentClaimsStore_Get_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Put provides a mock function for the type MockContentClaimsStore
-func (_mock *MockContentClaimsStore) Put(ctx context.Context, key ipld.Link, value delegation.Delegation) error {
+func (_mock *MockContentClaimsStore) Put(ctx context.Context, key cid.Cid, value ucan.Invocation) error {
 	ret := _mock.Called(ctx, key, value)
 
 	if len(ret) == 0 {
@@ -116,7 +116,7 @@ func (_mock *MockContentClaimsStore) Put(ctx context.Context, key ipld.Link, val
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, ipld.Link, delegation.Delegation) error); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, cid.Cid, ucan.Invocation) error); ok {
 		r0 = returnFunc(ctx, key, value)
 	} else {
 		r0 = ret.Error(0)
@@ -131,25 +131,25 @@ type MockContentClaimsStore_Put_Call struct {
 
 // Put is a helper method to define mock.On call
 //   - ctx context.Context
-//   - key ipld.Link
-//   - value delegation.Delegation
+//   - key cid.Cid
+//   - value ucan.Invocation
 func (_e *MockContentClaimsStore_Expecter) Put(ctx interface{}, key interface{}, value interface{}) *MockContentClaimsStore_Put_Call {
 	return &MockContentClaimsStore_Put_Call{Call: _e.mock.On("Put", ctx, key, value)}
 }
 
-func (_c *MockContentClaimsStore_Put_Call) Run(run func(ctx context.Context, key ipld.Link, value delegation.Delegation)) *MockContentClaimsStore_Put_Call {
+func (_c *MockContentClaimsStore_Put_Call) Run(run func(ctx context.Context, key cid.Cid, value ucan.Invocation)) *MockContentClaimsStore_Put_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 ipld.Link
+		var arg1 cid.Cid
 		if args[1] != nil {
-			arg1 = args[1].(ipld.Link)
+			arg1 = args[1].(cid.Cid)
 		}
-		var arg2 delegation.Delegation
+		var arg2 ucan.Invocation
 		if args[2] != nil {
-			arg2 = args[2].(delegation.Delegation)
+			arg2 = args[2].(ucan.Invocation)
 		}
 		run(
 			arg0,
@@ -165,7 +165,7 @@ func (_c *MockContentClaimsStore_Put_Call) Return(err error) *MockContentClaimsS
 	return _c
 }
 
-func (_c *MockContentClaimsStore_Put_Call) RunAndReturn(run func(ctx context.Context, key ipld.Link, value delegation.Delegation) error) *MockContentClaimsStore_Put_Call {
+func (_c *MockContentClaimsStore_Put_Call) RunAndReturn(run func(ctx context.Context, key cid.Cid, value ucan.Invocation) error) *MockContentClaimsStore_Put_Call {
 	_c.Call.Return(run)
 	return _c
 }
