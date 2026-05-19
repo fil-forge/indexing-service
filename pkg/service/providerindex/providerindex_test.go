@@ -63,6 +63,8 @@ func TestGetProviderResults(t *testing.T) {
 		mockStore.EXPECT().Members(extmocks.AnyContext, someHash).Return([]model.ProviderResult{existingResult}, nil)
 		mockNoProviderStore.EXPECT().Members(extmocks.AnyContext, someHash).Return(nil, types.ErrKeyNotFound)
 		mockIpniFinder.EXPECT().Find(extmocks.AnyContext, someHash).Return(ipniFinderResponse, nil)
+		mockStore.EXPECT().Add(extmocks.AnyContext, someHash, expectedResult).Return(1, nil)
+		mockStore.EXPECT().SetExpirable(extmocks.AnyContext, someHash, true).Return(nil)
 
 		results, err := providerIndex.getProviderResults(context.Background(), someHash, targetClaim)
 
