@@ -6,8 +6,8 @@ terraform {
     }
   }
   backend "s3" {
-    bucket  = "storacha-terraform-state"
-    key     = "storacha/${var.app}/shared.tfstate"
+    bucket  = "forge-terraform-state"
+    key     = "forge/${var.app}/shared.tfstate"
     region  = "us-west-2"
     encrypt = true
   }
@@ -20,9 +20,9 @@ provider "aws" {
     tags = {
       Environment  = "shared"
       ManagedBy    = "OpenTofu"
-      Owner        = "storacha"
-      Team         = "Storacha Engineering"
-      Organization = "Storacha"
+      Owner        = "forge"
+      Team         = "Filecoin Foundation Engineering"
+      Organization = "Filecoin Foundation"
       Project      = "${var.app}"
     }
   }
@@ -36,9 +36,9 @@ provider "aws" {
     tags = {
       Environment  = "dev"
       ManagedBy    = "OpenTofu"
-      Owner        = "storacha"
-      Team         = "Storacha Engineering"
-      Organization = "Storacha"
+      Owner        = "forge"
+      Team         = "Filecoin Foundation Engineering"
+      Organization = "Filecoin Foundation"
       Project      = "${var.app}"
     }
   }

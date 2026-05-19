@@ -15,7 +15,7 @@ import (
 // being rewritten against the ucantone invocation flow.
 
 func TestUrlForResource(t *testing.T) {
-	const addrBase = "/dns/storacha.network/https/http-path/"
+	const addrBase = "/dns/forge.fil.one/https/http-path/"
 	testCases := []struct {
 		name         string
 		addrs        []ma.Multiaddr
@@ -28,7 +28,7 @@ func TestUrlForResource(t *testing.T) {
 			addrs: []ma.Multiaddr{
 				testutil.Must(ma.NewMultiaddr(addrBase + url.PathEscape("/claims/{claim}")))(t),
 			},
-			expectedUrl: "https://storacha.network/claims/123",
+			expectedUrl: "https://forge.fil.one/claims/123",
 			replacements: []replacement{
 				{resourcePlaceholder: "{claim}", resourceID: "123"},
 			},
@@ -40,7 +40,7 @@ func TestUrlForResource(t *testing.T) {
 				testutil.Must(ma.NewMultiaddr(addrBase + url.PathEscape("/claims1/{claim}")))(t),
 				testutil.Must(ma.NewMultiaddr(addrBase + url.PathEscape("/claims2/{claim}")))(t),
 			},
-			expectedUrl: "https://storacha.network/claims1/123",
+			expectedUrl: "https://forge.fil.one/claims1/123",
 			replacements: []replacement{
 				{resourcePlaceholder: "{claim}", resourceID: "123"},
 			},
@@ -70,7 +70,7 @@ func TestUrlForResource(t *testing.T) {
 			addrs: []ma.Multiaddr{
 				testutil.Must(ma.NewMultiaddr(addrBase + url.PathEscape("/claims/{claim}-{subclaim}")))(t),
 			},
-			expectedUrl: "https://storacha.network/claims/123-456",
+			expectedUrl: "https://forge.fil.one/claims/123-456",
 			replacements: []replacement{
 				{resourcePlaceholder: "{claim}", resourceID: "123"},
 				{resourcePlaceholder: "{subclaim}", resourceID: "456"},
@@ -81,7 +81,7 @@ func TestUrlForResource(t *testing.T) {
 			addrs: []ma.Multiaddr{
 				testutil.Must(ma.NewMultiaddr(addrBase + url.PathEscape("/claims/{subclaim}")))(t),
 			},
-			expectedUrl: "https://storacha.network/claims/456",
+			expectedUrl: "https://forge.fil.one/claims/456",
 			replacements: []replacement{
 				{resourcePlaceholder: "{claim}", resourceID: "123"},
 				{resourcePlaceholder: "{subclaim}", resourceID: "456"},
@@ -94,7 +94,7 @@ func TestUrlForResource(t *testing.T) {
 				testutil.Must(ma.NewMultiaddr(addrBase + url.PathEscape("/claims1/{claim}")))(t),
 				testutil.Must(ma.NewMultiaddr(addrBase + url.PathEscape("/claims2/{claim}-{subclaim}")))(t),
 			},
-			expectedUrl: "https://storacha.network/claims1/123",
+			expectedUrl: "https://forge.fil.one/claims1/123",
 			replacements: []replacement{
 				{resourcePlaceholder: "{claim}", resourceID: "123"},
 				{resourcePlaceholder: "{subclaim}", resourceID: "456"},

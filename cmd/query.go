@@ -30,7 +30,7 @@ var queryCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:    "url",
 			Aliases: []string{"u"},
-			Value:   "https://indexer.storacha.network",
+			Value:   "https://indexer.forge.fil.one",
 			Usage:   "URL of the indexer to query.",
 		},
 		&cli.StringFlag{

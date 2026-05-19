@@ -23,9 +23,9 @@ if [[ -z "${TELEMETRY_DISABLED-}" ]]; then
     OTEL_EXPORTER_OTLP_ENDPOINT=https://api.honeycomb.io:443
     OTEL_EXPORTER_OTLP_HEADERS="x-honeycomb-team=${HONEYCOMB_API_KEY}"
   else
-    # HONEYCOMB_API_KEY not set, use Storacha's OTEL collector
+    # HONEYCOMB_API_KEY not set, use Forge's OTEL collector
     OTEL_SERVICE_NAME="${TF_WORKSPACE}-${TF_VAR_app}"
-    OTEL_EXPORTER_OTLP_ENDPOINT=https://telemetry.storacha.network:443
+    OTEL_EXPORTER_OTLP_ENDPOINT=https://telemetry.forge.fil.one:443
     OTEL_EXPORTER_OTLP_HEADERS=""
   fi
 fi
