@@ -18,8 +18,8 @@ import (
 	"github.com/fil-forge/automobile"
 	"github.com/fil-forge/go-ipni-tools/pkg/metadata"
 	"github.com/fil-forge/libforge/blobindex"
-	"github.com/fil-forge/libforge/capabilities"
-	assertcaps "github.com/fil-forge/libforge/capabilities/assert"
+	"github.com/fil-forge/libforge/commands"
+	assertcaps "github.com/fil-forge/libforge/commands/assert"
 	"github.com/fil-forge/libforge/testutil"
 	"github.com/fil-forge/ucantone/ucan"
 	"github.com/ipfs/go-cid"
@@ -107,7 +107,7 @@ func RandomLocationCommitment(t *testing.T) ucan.Invocation {
 	return Must(assertcaps.Location.Invoke(s, s.DID(), &assertcaps.LocationArguments{
 		Space:    s.DID(),
 		Content:  RandomMultihash(t),
-		Location: []capabilities.CborURL{capabilities.CborURL(*TestURL)},
+		Location: []commands.CborURL{commands.CborURL(*TestURL)},
 	}))(t)
 }
 

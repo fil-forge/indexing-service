@@ -17,10 +17,10 @@ require (
 	github.com/awslabs/aws-lambda-go-api-proxy v0.16.2
 	github.com/benbjohnson/clock v1.3.5
 	github.com/fil-forge/automobile v0.0.1
-	github.com/fil-forge/go-ipni-tools v0.0.0-20260515163636-e1326428a9de
+	github.com/fil-forge/go-ipni-tools v0.0.0-20260519170705-e334958fb4ad
 	github.com/fil-forge/go-libstoracha v0.0.0-20260507180245-218ac18ff773
-	github.com/fil-forge/libforge v0.0.0-20260518202655-9ac2bc7bb9b0
-	github.com/fil-forge/ucantone v0.0.0-20260514184915-8bebe15b0096
+	github.com/fil-forge/libforge v0.0.0-20260519133220-4d5747ca0927
+	github.com/fil-forge/ucantone v0.0.0-20260519122919-0ee8deb17aa4
 	github.com/getsentry/sentry-go v0.33.0
 	github.com/google/uuid v1.6.0
 	github.com/ipfs/go-cid v0.6.1
@@ -141,6 +141,8 @@ require (
 	github.com/tklauser/numcpus v0.8.0 // indirect
 	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
+	gitlab.com/yawning/secp256k1-voi v0.0.0-20230925100816-f2616030848b // indirect
+	gitlab.com/yawning/tuplehash v0.0.0-20230713102510-df83abbf9a02 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.37.0 // indirect
 	go.opentelemetry.io/otel/metric v1.40.0 // indirect

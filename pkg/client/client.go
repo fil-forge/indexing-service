@@ -18,8 +18,8 @@ import (
 
 	"github.com/fil-forge/indexing-service/pkg/service/queryresult"
 	"github.com/fil-forge/indexing-service/pkg/types"
-	assertcaps "github.com/fil-forge/libforge/capabilities/assert"
-	claimcaps "github.com/fil-forge/libforge/capabilities/claim"
+	assertcaps "github.com/fil-forge/libforge/commands/assert"
+	claimcaps "github.com/fil-forge/libforge/commands/claim"
 	"github.com/fil-forge/libforge/digestutil"
 	"github.com/fil-forge/libforge/ucan/retrieval"
 	"github.com/fil-forge/ucantone/client"

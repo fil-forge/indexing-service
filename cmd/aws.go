@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -10,14 +11,16 @@ import (
 	"github.com/fil-forge/go-ipni-tools/pkg/queue"
 	"github.com/fil-forge/go-ipni-tools/pkg/store"
 	"github.com/fil-forge/indexing-service/pkg/aws"
-	"github.com/fil-forge/indexing-service/pkg/lib"
 	"github.com/fil-forge/indexing-service/pkg/redis"
 	"github.com/fil-forge/indexing-service/pkg/server"
 	"github.com/fil-forge/indexing-service/pkg/service/providercacher"
 	"github.com/fil-forge/indexing-service/pkg/service/providerindex/remotesyncer"
 	"github.com/fil-forge/indexing-service/pkg/telemetry"
 	"github.com/fil-forge/libforge/didresolver"
+	"github.com/fil-forge/ucantone/did"
+	"github.com/fil-forge/ucantone/principal/verifier"
 	userver "github.com/fil-forge/ucantone/server"
+	"github.com/fil-forge/ucantone/ucan"
 	"github.com/fil-forge/ucantone/validator"
 	goredis "github.com/redis/go-redis/v9"
 	"github.com/urfave/cli/v2"
@@ -60,7 +63,12 @@ var awsCmd = &cli.Command{
 			srvOpts,
 			server.WithContentClaimsOptions(
 				userver.WithValidationOptions(
-					validator.WithDIDResolver(lib.NewDIDVerifierResolverAdapter(tierResolv.Resolve)),
+					validator.WithDIDVerifierResolvers(map[string]validator.DIDVerifierResolverFunc{
+						"key": func(ctx context.Context, did did.DID) (ucan.Verifier, error) {
+							return verifier.FromDIDKey(did)
+						},
+						"web": tierResolv.Resolve,
+					}),
 				),
 			),
 		)

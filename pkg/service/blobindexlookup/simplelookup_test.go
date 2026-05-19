@@ -13,17 +13,17 @@ import (
 	"github.com/fil-forge/indexing-service/pkg/service/blobindexlookup"
 	"github.com/fil-forge/indexing-service/pkg/types"
 	"github.com/fil-forge/libforge/blobindex"
-	"github.com/fil-forge/libforge/capabilities/content"
+	"github.com/fil-forge/libforge/commands/content"
 	"github.com/fil-forge/libforge/ucan/retrieval"
 	"github.com/fil-forge/ucantone/execution"
 	"github.com/fil-forge/ucantone/ipld/datamodel"
 	"github.com/fil-forge/ucantone/ucan"
 	"github.com/fil-forge/ucantone/ucan/container"
-	"github.com/fil-forge/ucantone/validator/capability"
+	"github.com/fil-forge/ucantone/validator/bindcom"
 	"github.com/stretchr/testify/require"
 )
 
-var contentRetrieveCapability, _ = capability.New("/content/retrieve")
+var contentRetrieve, _ = bindcom.Parse[datamodel.Map]("/content/retrieve")
 
 func TestBlobIndexLookup__Find(t *testing.T) {
 	provider := testutil.RandomProviderResult(t)
@@ -35,7 +35,7 @@ func TestBlobIndexLookup__Find(t *testing.T) {
 	indexEncodedLength := uint64(len(indexBytes))
 
 	srv := retrieval.NewServer(testutil.Service)
-	srv.Handle(contentRetrieveCapability, func(req execution.Request, res execution.Response) error {
+	srv.Handle(ucan.Command(contentRetrieve), func(req execution.Request, res execution.Response) error {
 		respMeta := &retrieval.HTTPHeaderResponseContainer{
 			Container:  container.New(),
 			StatusCode: http.StatusOK,
@@ -64,7 +64,7 @@ func TestBlobIndexLookup__Find(t *testing.T) {
 		Auth: types.RetrievalAuth{
 			Issuer:   testutil.Service,
 			Audience: testutil.Service.DID(),
-			Command:  content.RetrieveCommand,
+			Command:  ucan.Command(content.Retrieve),
 			Subject:  testutil.Service.DID(),
 			Arguments: &content.RetrieveArguments{
 				Blob:  content.Blob{Digest: contentDigest},

@@ -2,8 +2,8 @@ package contentclaims
 
 import (
 	"github.com/fil-forge/indexing-service/pkg/types"
-	assertcaps "github.com/fil-forge/libforge/capabilities/assert"
-	claimcaps "github.com/fil-forge/libforge/capabilities/claim"
+	assertcaps "github.com/fil-forge/libforge/commands/assert"
+	claimcaps "github.com/fil-forge/libforge/commands/claim"
 	"github.com/fil-forge/ucantone/did"
 	"github.com/fil-forge/ucantone/execution"
 	"github.com/fil-forge/ucantone/execution/bindexec"
@@ -19,7 +19,7 @@ var log = logging.Logger("contentclaims")
 
 func NewUCANService(service types.Publisher) map[ucan.Command]execution.HandlerFunc {
 	return map[ucan.Command]execution.HandlerFunc{
-		assertcaps.EqualsCommand: bindexec.NewHandler(func(
+		ucan.Command(assertcaps.Equals): bindexec.NewHandler(func(
 			req *bindexec.Request[*assertcaps.EqualsArguments],
 			res *bindexec.Response[*assertcaps.EqualsOK],
 		) error {
@@ -31,7 +31,7 @@ func NewUCANService(service types.Publisher) map[ucan.Command]execution.HandlerF
 			}
 			return res.SetSuccess(&assertcaps.EqualsOK{})
 		}),
-		assertcaps.IndexCommand: bindexec.NewHandler(func(
+		ucan.Command(assertcaps.Index): bindexec.NewHandler(func(
 			req *bindexec.Request[*assertcaps.IndexArguments],
 			res *bindexec.Response[*assertcaps.IndexOK],
 		) error {
@@ -43,7 +43,7 @@ func NewUCANService(service types.Publisher) map[ucan.Command]execution.HandlerF
 			}
 			return res.SetSuccess(&assertcaps.IndexOK{})
 		}),
-		claimcaps.CacheCommand: bindexec.NewHandler(func(
+		ucan.Command(claimcaps.Cache): bindexec.NewHandler(func(
 			req *bindexec.Request[*claimcaps.CacheArguments],
 			res *bindexec.Response[*claimcaps.CacheOK],
 		) error {

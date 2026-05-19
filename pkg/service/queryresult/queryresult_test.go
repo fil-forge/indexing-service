@@ -8,8 +8,8 @@ import (
 	"github.com/fil-forge/indexing-service/pkg/types"
 	"github.com/fil-forge/libforge/blobindex"
 	"github.com/fil-forge/libforge/bytemap"
-	"github.com/fil-forge/libforge/capabilities"
-	"github.com/fil-forge/libforge/capabilities/assert"
+	"github.com/fil-forge/libforge/commands"
+	"github.com/fil-forge/libforge/commands/assert"
 	"github.com/fil-forge/ucantone/ucan"
 	"github.com/fil-forge/ucantone/ucan/invocation"
 	"github.com/ipfs/go-cid"
@@ -45,7 +45,7 @@ func TestBuildCompressed(t *testing.T) {
 			&assert.LocationArguments{
 				Space:    principal.DID(),
 				Content:  shardMh,
-				Location: []capabilities.CborURL{capabilities.CborURL(*testutil.TestURL)},
+				Location: []commands.CborURL{commands.CborURL(*testutil.TestURL)},
 				Range: &assert.Range{
 					Start: 1000,
 					End:   &shardLength,
@@ -62,7 +62,7 @@ func TestBuildCompressed(t *testing.T) {
 			&assert.LocationArguments{
 				Space:    principal.DID(),
 				Content:  otherShardMH,
-				Location: []capabilities.CborURL{capabilities.CborURL(*testutil.TestURL)},
+				Location: []commands.CborURL{commands.CborURL(*testutil.TestURL)},
 				Range: &assert.Range{
 					Start: 1000,
 					End:   &otherShardLength,
@@ -102,7 +102,7 @@ func TestBuildCompressed(t *testing.T) {
 
 		decoded, err := invocation.Decode(compressedBlock.Data)
 		require.NoError(t, err)
-		require.Equal(t, assert.LocationCommand, decoded.Command().String())
+		require.Equal(t, ucan.Command(assert.Location), decoded.Command())
 
 		var args assert.LocationArguments
 		require.NoError(t, args.UnmarshalCBOR(bytes.NewReader(decoded.ArgumentsBytes())))
@@ -140,7 +140,7 @@ func TestBuildCompressed(t *testing.T) {
 			&assert.LocationArguments{
 				Space:    principal.DID(),
 				Content:  shardMh,
-				Location: []capabilities.CborURL{capabilities.CborURL(*testutil.TestURL)},
+				Location: []commands.CborURL{commands.CborURL(*testutil.TestURL)},
 				Range:    nil,
 			},
 		)

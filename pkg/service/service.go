@@ -23,13 +23,13 @@ import (
 	"github.com/fil-forge/indexing-service/pkg/types"
 	"github.com/fil-forge/libforge/blobindex"
 	"github.com/fil-forge/libforge/bytemap"
-	"github.com/fil-forge/libforge/capabilities/assert"
-	"github.com/fil-forge/libforge/capabilities/content"
+	"github.com/fil-forge/libforge/commands/assert"
+	"github.com/fil-forge/libforge/commands/content"
 	"github.com/fil-forge/libforge/digestutil"
 	ucanlib "github.com/fil-forge/libforge/ucan"
 	"github.com/fil-forge/ucantone/did"
 	"github.com/fil-forge/ucantone/principal"
-	"github.com/fil-forge/ucantone/principal/ed25519/verifier"
+	ed25519_verifier "github.com/fil-forge/ucantone/principal/ed25519/verifier"
 	"github.com/fil-forge/ucantone/ucan"
 	"github.com/fil-forge/ucantone/ucan/container"
 	"github.com/fil-forge/ucantone/validator"
@@ -252,7 +252,7 @@ func (is *IndexingService) jobHandler(mhCtx context.Context, j job, spawn func(j
 					}
 
 					proofStore := ucanlib.NewContainerProofStore(container.New(container.WithDelegations(dlgs...)))
-					proofs, _, err := proofStore.ProofChain(mhCtx, is.id.DID(), content.RetrieveCommand, space)
+					proofs, _, err := proofStore.ProofChain(mhCtx, is.id.DID(), ucan.Command(content.Retrieve), space)
 					if err != nil {
 						log.Warnw("failed to build proof chain, will try next provider result if available", "err", err)
 						lastIndexFetchErr = fmt.Errorf("failed to build proof chain: %w", err)
@@ -269,7 +269,7 @@ func (is *IndexingService) jobHandler(mhCtx context.Context, j job, spawn func(j
 						Auth: types.RetrievalAuth{
 							Issuer:   is.id,
 							Audience: claim.Issuer(),
-							Command:  content.RetrieveCommand,
+							Command:  ucan.Command(content.Retrieve),
 							Subject:  proofs[0].Subject(),
 							Arguments: &content.RetrieveArguments{
 								Blob:  content.Blob{Digest: lcArgs.Content},
@@ -469,8 +469,8 @@ func Cache(ctx context.Context, blobIndex blobindexlookup.BlobIndexLookup, claim
 	ctx, s := telemetry.StartSpan(ctx, "IndexingService.Cache")
 	defer s.End()
 
-	switch claim.Command().String() {
-	case assert.LocationCommand:
+	switch claim.Command() {
+	case ucan.Command(assert.Location):
 		s.SetAttributes(attribute.KeyValue{Key: "claim", Value: attribute.StringValue("assert/location")})
 		return cacheLocationCommitment(ctx, claims, provIndex, provider, claim, meta)
 	default:
@@ -479,7 +479,7 @@ func Cache(ctx context.Context, blobIndex blobindexlookup.BlobIndexLookup, claim
 }
 
 func cacheLocationCommitment(ctx context.Context, claims contentclaims.Service, provIndex providerindex.ProviderIndex, provider peer.AddrInfo, claim ucan.Invocation, _ ucan.Container) error {
-	if claim.Command().String() != assert.LocationCommand {
+	if claim.Command() != ucan.Command(assert.Location) {
 		return fmt.Errorf("invalid claim type: expected assert/location, got %s", claim.Command().String())
 	}
 
@@ -539,12 +539,12 @@ func Publish(ctx context.Context, id ucan.Signer, blobIndex blobindexlookup.Blob
 	ctx, s := telemetry.StartSpan(ctx, "IndexingService.Publish")
 	defer s.End()
 
-	switch claim.Command().String() {
-	case assert.EqualsCommand:
-		s.SetAttributes(attribute.KeyValue{Key: "claim", Value: attribute.StringValue(assert.EqualsCommand)})
+	switch claim.Command() {
+	case ucan.Command(assert.Equals):
+		s.SetAttributes(attribute.KeyValue{Key: "claim", Value: attribute.StringValue(string(assert.Equals))})
 		return publishEqualsClaim(ctx, claims, provIndex, provider, claim, meta)
-	case assert.IndexCommand:
-		s.SetAttributes(attribute.KeyValue{Key: "claim", Value: attribute.StringValue(assert.IndexCommand)})
+	case ucan.Command(assert.Index):
+		s.SetAttributes(attribute.KeyValue{Key: "claim", Value: attribute.StringValue(string(assert.Index))})
 		return publishIndexClaim(ctx, id, blobIndex, claims, provIndex, provider, claim, meta)
 	default:
 		return ErrUnrecognizedClaim
@@ -733,7 +733,7 @@ func fetchBlobIndex(
 		Auth: types.RetrievalAuth{
 			Issuer:   id,
 			Audience: aud.DID(),
-			Command:  content.RetrieveCommand,
+			Command:  ucan.Command(content.Retrieve),
 			Subject:  proofs[0].Subject(),
 			Arguments: &content.RetrieveArguments{
 				Blob:  content.Blob{Digest: blobLink.Hash()},
@@ -756,29 +756,13 @@ func fetchBlobIndex(
 	return idx, nil
 }
 
-// validateLocationCommitment ensures that the delegation is a valid UCAN (signed,
+// validateLocationCommitment ensures that the claim is a valid UCAN (signed,
 // not expired etc.) and is a location commitment.
 func validateLocationCommitment(ctx context.Context, claim ucan.Invocation) error {
-	// We use the delegation issuer as the authority, since this should be a self
-	// issued UCAN to assert location.
-	// TODO: support verifiers for other key types?
-	vfr, err := verifier.Parse(claim.Issuer().String())
-	if err != nil {
-		return fmt.Errorf("parsing claim issuer DID: %w", err)
+	if claim.Command() != ucan.Command(assert.Location) {
+		return fmt.Errorf("unexpected command: %s", claim.Command())
 	}
-	_, err = validator.Access(
-		ctx,
-		vfr,
-		assert.Location,
-		claim,
-		validator.WithAuthorizationValidator(validator.NopValidateAuthorization), // TODO: revocations?
-		validator.WithProofResolver(validator.ProofUnavailable),                  // probably don't want to resolve proofs...
-		validator.WithDIDResolver(validator.FailDIDKeyResolution),                // probably don't want to resolve DID methods either
-		validator.WithPrincipalParser(func(str string) (principal.Verifier, error) {
-			return verifier.Parse(str) // TODO: support verifiers for other key types?
-		}),
-	)
-	return err
+	return validator.ValidateInvocation(ctx, claim)
 }
 
 // peerToPrincipal converts a peer ID into a UCAN principal object. Currently
@@ -792,7 +776,7 @@ func peerToPrincipal(peer peer.ID) (principal.Verifier, error) {
 	if err != nil {
 		return nil, fmt.Errorf("extracting raw bytes of public key: %w", err)
 	}
-	v, err := verifier.FromRaw(pubBytes)
+	v, err := ed25519_verifier.FromRaw(pubBytes)
 	if err != nil {
 		return nil, fmt.Errorf("decoding raw ed25519 public key: %w", err)
 	}
@@ -824,7 +808,7 @@ func extractContentRetrieveDelegation(ctx context.Context, audience did.DID, ass
 	}
 
 	proofStore := ucanlib.NewContainerProofStore(assertionMeta)
-	proofs, _, err := proofStore.ProofChain(ctx, audience, content.RetrieveCommand, rootDelegation.Subject())
+	proofs, _, err := proofStore.ProofChain(ctx, audience, ucan.Command(content.Retrieve), rootDelegation.Subject())
 	if err != nil {
 		return nil, fmt.Errorf("building proof chain: %w", err)
 	}

@@ -6,8 +6,8 @@ import (
 
 	"github.com/fil-forge/indexing-service/pkg/internal/testutil"
 	"github.com/fil-forge/indexing-service/pkg/redis"
-	"github.com/fil-forge/libforge/capabilities"
-	assertcaps "github.com/fil-forge/libforge/capabilities/assert"
+	"github.com/fil-forge/libforge/commands"
+	assertcaps "github.com/fil-forge/libforge/commands/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -21,7 +21,7 @@ func TestContentClaimsStore(t *testing.T) {
 		&assertcaps.LocationArguments{
 			Space:    testutil.Service.DID(),
 			Content:  testutil.RandomMultihash(t),
-			Location: []capabilities.CborURL{capabilities.CborURL(*testutil.TestURL)},
+			Location: []commands.CborURL{commands.CborURL(*testutil.TestURL)},
 		},
 	)
 	require.NoError(t, err)

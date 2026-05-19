@@ -8,9 +8,9 @@ import (
 
 	"github.com/fil-forge/indexing-service/pkg/internal/testutil"
 	"github.com/fil-forge/indexing-service/pkg/types"
-	"github.com/fil-forge/libforge/capabilities"
-	assertcaps "github.com/fil-forge/libforge/capabilities/assert"
-	claimcaps "github.com/fil-forge/libforge/capabilities/claim"
+	"github.com/fil-forge/libforge/commands"
+	assertcaps "github.com/fil-forge/libforge/commands/assert"
+	claimcaps "github.com/fil-forge/libforge/commands/claim"
 	"github.com/fil-forge/ucantone/client"
 	"github.com/fil-forge/ucantone/execution"
 	"github.com/fil-forge/ucantone/ucan"
@@ -39,7 +39,7 @@ func TestServer(t *testing.T) {
 		&assertcaps.LocationArguments{
 			Space:    testutil.Bob.DID(),
 			Content:  testutil.RandomMultihash(t),
-			Location: []capabilities.CborURL{capabilities.CborURL(*testutil.TestURL)},
+			Location: []commands.CborURL{commands.CborURL(*testutil.TestURL)},
 		},
 	))(t)
 
@@ -60,7 +60,7 @@ func TestServer(t *testing.T) {
 		opts []execution.RequestOption
 	}{
 		{
-			name: assertcaps.EqualsCommand,
+			name: string(assertcaps.Equals),
 			inv: testutil.Must(assertcaps.Equals.Invoke(
 				testutil.Service,
 				testutil.Service.DID(),
@@ -71,7 +71,7 @@ func TestServer(t *testing.T) {
 			))(t),
 		},
 		{
-			name: assertcaps.IndexCommand,
+			name: string(assertcaps.Index),
 			inv: testutil.Must(assertcaps.Index.Invoke(
 				testutil.Service,
 				testutil.Service.DID(),
@@ -81,7 +81,7 @@ func TestServer(t *testing.T) {
 			))(t),
 		},
 		{
-			name: claimcaps.CacheCommand,
+			name: string(claimcaps.Cache),
 			inv:  cacheInvocation,
 			opts: []execution.RequestOption{execution.WithInvocations(locationCommitment)},
 		},

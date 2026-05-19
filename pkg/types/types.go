@@ -8,7 +8,7 @@ import (
 	"net/url"
 
 	"github.com/fil-forge/libforge/blobindex"
-	contentcaps "github.com/fil-forge/libforge/capabilities/content"
+	contentcaps "github.com/fil-forge/libforge/commands/content"
 	"github.com/fil-forge/ucantone/did"
 	"github.com/fil-forge/ucantone/ucan"
 	"github.com/ipfs/go-cid"

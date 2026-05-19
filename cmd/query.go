@@ -8,7 +8,7 @@ import (
 
 	"github.com/fil-forge/go-libstoracha/digestutil"
 	"github.com/fil-forge/libforge/blobindex"
-	assertcaps "github.com/fil-forge/libforge/capabilities/assert"
+	assertcaps "github.com/fil-forge/libforge/commands/assert"
 	"github.com/fil-forge/ucantone/did"
 	"github.com/fil-forge/ucantone/ucan"
 	"github.com/fil-forge/ucantone/ucan/container"
@@ -167,11 +167,11 @@ var queryCmd = &cli.Command{
 			fmt.Printf("    %s\n", claim.Link())
 			fmt.Println("      Type:")
 			fmt.Printf("        %s\n", claim.Command())
-			switch claim.Command().String() {
-			case assertcaps.LocationCommand:
+			switch claim.Command() {
+			case ucan.Command(assertcaps.Location):
 				var args assertcaps.LocationArguments
 				if err := args.UnmarshalCBOR(bytes.NewReader(claim.ArgumentsBytes())); err != nil {
-					return fmt.Errorf("decoding %s arguments: %w", assertcaps.LocationCommand, err)
+					return fmt.Errorf("decoding %s arguments: %w", assertcaps.Location, err)
 				}
 				fmt.Println("      Content:")
 				fmt.Printf("        %s\n", digestutil.Format(args.Content))
@@ -191,19 +191,19 @@ var queryCmd = &cli.Command{
 						fmt.Println("")
 					}
 				}
-			case assertcaps.EqualsCommand:
+			case ucan.Command(assertcaps.Equals):
 				var args assertcaps.EqualsArguments
 				if err := args.UnmarshalCBOR(bytes.NewReader(claim.ArgumentsBytes())); err != nil {
-					return fmt.Errorf("decoding %s arguments: %w", assertcaps.EqualsCommand, err)
+					return fmt.Errorf("decoding %s arguments: %w", assertcaps.Equals, err)
 				}
 				fmt.Println("      Content:")
 				fmt.Printf("        %s\n", digestutil.Format(args.Content))
 				fmt.Println("      Equals:")
 				fmt.Printf("        %s\n", args.Equals)
-			case assertcaps.IndexCommand:
+			case ucan.Command(assertcaps.Index):
 				var args assertcaps.IndexArguments
 				if err := args.UnmarshalCBOR(bytes.NewReader(claim.ArgumentsBytes())); err != nil {
-					return fmt.Errorf("decoding %s arguments: %w", assertcaps.IndexCommand, err)
+					return fmt.Errorf("decoding %s arguments: %w", ucan.Command(assertcaps.Index), err)
 				}
 				fmt.Println("      Index:")
 				fmt.Printf("        %s\n", args.Index)

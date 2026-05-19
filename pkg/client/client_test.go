@@ -19,9 +19,9 @@ import (
 	"github.com/fil-forge/indexing-service/pkg/types"
 	"github.com/fil-forge/libforge/blobindex"
 	"github.com/fil-forge/libforge/bytemap"
-	"github.com/fil-forge/libforge/capabilities"
-	assertcaps "github.com/fil-forge/libforge/capabilities/assert"
-	claimcaps "github.com/fil-forge/libforge/capabilities/claim"
+	"github.com/fil-forge/libforge/commands"
+	assertcaps "github.com/fil-forge/libforge/commands/assert"
+	claimcaps "github.com/fil-forge/libforge/commands/claim"
 	"github.com/fil-forge/libforge/digestutil"
 	"github.com/fil-forge/ucantone/ucan"
 	"github.com/ipfs/go-cid"
@@ -58,7 +58,7 @@ func TestClient(t *testing.T) {
 		&assertcaps.LocationArguments{
 			Space:    alice.DID(),
 			Content:  contentDigest,
-			Location: []capabilities.CborURL{capabilities.CborURL(*testutil.TestURL)},
+			Location: []commands.CborURL{commands.CborURL(*testutil.TestURL)},
 		},
 	)
 	require.NoError(t, err)
@@ -95,7 +95,7 @@ func TestClient(t *testing.T) {
 		require.NoError(t, err)
 
 		require.NotEmpty(t, indexer.published)
-		require.Equal(t, assertcaps.IndexCommand, indexer.published[len(indexer.published)-1].Command().String())
+		require.Equal(t, string(assertcaps.Index), indexer.published[len(indexer.published)-1].Command().String())
 	})
 
 	t.Run("query claims", func(t *testing.T) {

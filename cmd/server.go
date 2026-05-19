@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	crypto_ed25519 "crypto/ed25519"
 	"crypto/x509"
 	"encoding/json"
@@ -17,7 +18,9 @@ import (
 	"github.com/fil-forge/ucantone/principal"
 	"github.com/fil-forge/ucantone/principal/ed25519"
 	"github.com/fil-forge/ucantone/principal/signer"
+	"github.com/fil-forge/ucantone/principal/verifier"
 	userver "github.com/fil-forge/ucantone/server"
+	"github.com/fil-forge/ucantone/ucan"
 	"github.com/fil-forge/ucantone/validator"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/ipni/go-libipni/maurl"
@@ -29,7 +32,6 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/fil-forge/indexing-service/pkg/construct"
-	"github.com/fil-forge/indexing-service/pkg/lib"
 	"github.com/fil-forge/indexing-service/pkg/presets"
 	"github.com/fil-forge/indexing-service/pkg/redis"
 	"github.com/fil-forge/indexing-service/pkg/server"
@@ -192,7 +194,12 @@ var serverCmd = &cli.Command{
 					opts,
 					server.WithContentClaimsOptions(
 						userver.WithValidationOptions(
-							validator.WithDIDResolver(lib.NewDIDVerifierResolverAdapter(tierResolv.Resolve)),
+							validator.WithDIDVerifierResolvers(map[string]validator.DIDVerifierResolverFunc{
+								"key": func(ctx context.Context, did did.DID) (ucan.Verifier, error) {
+									return verifier.FromDIDKey(did)
+								},
+								"web": tierResolv.Resolve,
+							}),
 						),
 					),
 				)

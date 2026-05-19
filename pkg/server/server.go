@@ -14,7 +14,7 @@ import (
 	"github.com/fil-forge/indexing-service/pkg/service/contentclaims"
 	"github.com/fil-forge/indexing-service/pkg/telemetry"
 	"github.com/fil-forge/indexing-service/pkg/types"
-	assertcaps "github.com/fil-forge/libforge/capabilities/assert"
+	assertcaps "github.com/fil-forge/libforge/commands/assert"
 	"github.com/fil-forge/libforge/ucan/retrieval"
 	"github.com/fil-forge/ucantone/did"
 	"github.com/fil-forge/ucantone/principal"
@@ -371,8 +371,8 @@ func GetIPNICIDHandler(service types.Querier, config *ipniConfig) http.HandlerFu
 				return
 			}
 
-			switch claim.Command().String() {
-			case assertcaps.LocationCommand:
+			switch claim.Command() {
+			case ucan.Command(assertcaps.Location):
 				data, err := model.MarshalFindResponse(&model.FindResponse{
 					MultihashResults: []model.MultihashResult{{
 						Multihash: mh,

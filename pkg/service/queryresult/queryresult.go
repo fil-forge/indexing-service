@@ -13,7 +13,7 @@ import (
 	"github.com/fil-forge/indexing-service/pkg/types"
 	"github.com/fil-forge/libforge/blobindex"
 	"github.com/fil-forge/libforge/bytemap"
-	"github.com/fil-forge/libforge/capabilities/assert"
+	"github.com/fil-forge/libforge/commands/assert"
 	"github.com/fil-forge/ucantone/ucan"
 	"github.com/fil-forge/ucantone/ucan/invocation"
 	"github.com/ipfs/go-cid"
@@ -153,7 +153,7 @@ func BuildCompressed(targetMh mh.Multihash, principal ucan.Signer, claims map[ci
 				var locClaim assert.LocationArguments
 				var expiration *ucan.UnixTimestamp
 				for _, claim := range claims {
-					if claim.Command().String() != assert.LocationCommand {
+					if claim.Command() != ucan.Command(assert.Location) {
 						continue
 					}
 					if err := locClaim.UnmarshalCBOR(bytes.NewReader(claim.ArgumentsBytes())); err != nil {
