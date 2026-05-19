@@ -153,7 +153,7 @@ func BuildCompressed(targetMh mh.Multihash, principal ucan.Signer, claims map[ci
 				var locClaim assert.LocationArguments
 				var expiration *ucan.UnixTimestamp
 				for _, claim := range claims {
-					if claim.Command() != ucan.Command(assert.Location) {
+					if claim.Command() != assert.Location.Command {
 						continue
 					}
 					if err := locClaim.UnmarshalCBOR(bytes.NewReader(claim.ArgumentsBytes())); err != nil {

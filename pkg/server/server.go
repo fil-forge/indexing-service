@@ -372,7 +372,7 @@ func GetIPNICIDHandler(service types.Querier, config *ipniConfig) http.HandlerFu
 			}
 
 			switch claim.Command() {
-			case ucan.Command(assertcaps.Location):
+			case assertcaps.Location.Command:
 				data, err := model.MarshalFindResponse(&model.FindResponse{
 					MultihashResults: []model.MultihashResult{{
 						Multihash: mh,

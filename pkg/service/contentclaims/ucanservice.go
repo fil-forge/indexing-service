@@ -19,7 +19,7 @@ var log = logging.Logger("contentclaims")
 
 func NewUCANService(service types.Publisher) map[ucan.Command]execution.HandlerFunc {
 	return map[ucan.Command]execution.HandlerFunc{
-		ucan.Command(assertcaps.Equals): bindexec.NewHandler(func(
+		assertcaps.Equals.Command: bindexec.NewHandler(func(
 			req *bindexec.Request[*assertcaps.EqualsArguments],
 			res *bindexec.Response[*assertcaps.EqualsOK],
 		) error {
@@ -31,7 +31,7 @@ func NewUCANService(service types.Publisher) map[ucan.Command]execution.HandlerF
 			}
 			return res.SetSuccess(&assertcaps.EqualsOK{})
 		}),
-		ucan.Command(assertcaps.Index): bindexec.NewHandler(func(
+		assertcaps.Index.Command: bindexec.NewHandler(func(
 			req *bindexec.Request[*assertcaps.IndexArguments],
 			res *bindexec.Response[*assertcaps.IndexOK],
 		) error {
@@ -43,7 +43,7 @@ func NewUCANService(service types.Publisher) map[ucan.Command]execution.HandlerF
 			}
 			return res.SetSuccess(&assertcaps.IndexOK{})
 		}),
-		ucan.Command(claimcaps.Cache): bindexec.NewHandler(func(
+		claimcaps.Cache.Command: bindexec.NewHandler(func(
 			req *bindexec.Request[*claimcaps.CacheArguments],
 			res *bindexec.Response[*claimcaps.CacheOK],
 		) error {

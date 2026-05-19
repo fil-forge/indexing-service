@@ -35,7 +35,7 @@ func TestBlobIndexLookup__Find(t *testing.T) {
 	indexEncodedLength := uint64(len(indexBytes))
 
 	srv := retrieval.NewServer(testutil.Service)
-	srv.Handle(ucan.Command(contentRetrieve), func(req execution.Request, res execution.Response) error {
+	srv.Handle(contentRetrieve.Command, func(req execution.Request, res execution.Response) error {
 		respMeta := &retrieval.HTTPHeaderResponseContainer{
 			Container:  container.New(),
 			StatusCode: http.StatusOK,
@@ -64,7 +64,7 @@ func TestBlobIndexLookup__Find(t *testing.T) {
 		Auth: types.RetrievalAuth{
 			Issuer:   testutil.Service,
 			Audience: testutil.Service.DID(),
-			Command:  ucan.Command(content.Retrieve),
+			Command:  content.Retrieve.Command,
 			Subject:  testutil.Service.DID(),
 			Arguments: &content.RetrieveArguments{
 				Blob:  content.Blob{Digest: contentDigest},

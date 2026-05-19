@@ -95,7 +95,7 @@ func TestClient(t *testing.T) {
 		require.NoError(t, err)
 
 		require.NotEmpty(t, indexer.published)
-		require.Equal(t, string(assertcaps.Index), indexer.published[len(indexer.published)-1].Command().String())
+		require.Equal(t, assertcaps.Index.Command, indexer.published[len(indexer.published)-1].Command())
 	})
 
 	t.Run("query claims", func(t *testing.T) {

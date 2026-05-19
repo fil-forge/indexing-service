@@ -102,7 +102,7 @@ func TestBuildCompressed(t *testing.T) {
 
 		decoded, err := invocation.Decode(compressedBlock.Data)
 		require.NoError(t, err)
-		require.Equal(t, ucan.Command(assert.Location), decoded.Command())
+		require.Equal(t, assert.Location.Command, decoded.Command())
 
 		var args assert.LocationArguments
 		require.NoError(t, args.UnmarshalCBOR(bytes.NewReader(decoded.ArgumentsBytes())))

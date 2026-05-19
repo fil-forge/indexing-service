@@ -17,10 +17,10 @@ require (
 	github.com/awslabs/aws-lambda-go-api-proxy v0.16.2
 	github.com/benbjohnson/clock v1.3.5
 	github.com/fil-forge/automobile v0.0.1
-	github.com/fil-forge/go-ipni-tools v0.0.0-20260519170705-e334958fb4ad
+	github.com/fil-forge/go-ipni-tools v0.0.0-20260519194815-545b9421aec0
 	github.com/fil-forge/go-libstoracha v0.0.0-20260507180245-218ac18ff773
-	github.com/fil-forge/libforge v0.0.0-20260519133220-4d5747ca0927
-	github.com/fil-forge/ucantone v0.0.0-20260519122919-0ee8deb17aa4
+	github.com/fil-forge/libforge v0.0.0-20260519193938-fc442aef7e5c
+	github.com/fil-forge/ucantone v0.0.0-20260519193222-ad31490eaa10
 	github.com/getsentry/sentry-go v0.33.0
 	github.com/google/uuid v1.6.0
 	github.com/ipfs/go-cid v0.6.1

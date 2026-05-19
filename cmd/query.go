@@ -168,7 +168,7 @@ var queryCmd = &cli.Command{
 			fmt.Println("      Type:")
 			fmt.Printf("        %s\n", claim.Command())
 			switch claim.Command() {
-			case ucan.Command(assertcaps.Location):
+			case assertcaps.Location.Command:
 				var args assertcaps.LocationArguments
 				if err := args.UnmarshalCBOR(bytes.NewReader(claim.ArgumentsBytes())); err != nil {
 					return fmt.Errorf("decoding %s arguments: %w", assertcaps.Location, err)
@@ -191,7 +191,7 @@ var queryCmd = &cli.Command{
 						fmt.Println("")
 					}
 				}
-			case ucan.Command(assertcaps.Equals):
+			case assertcaps.Equals.Command:
 				var args assertcaps.EqualsArguments
 				if err := args.UnmarshalCBOR(bytes.NewReader(claim.ArgumentsBytes())); err != nil {
 					return fmt.Errorf("decoding %s arguments: %w", assertcaps.Equals, err)
@@ -200,10 +200,10 @@ var queryCmd = &cli.Command{
 				fmt.Printf("        %s\n", digestutil.Format(args.Content))
 				fmt.Println("      Equals:")
 				fmt.Printf("        %s\n", args.Equals)
-			case ucan.Command(assertcaps.Index):
+			case assertcaps.Index.Command:
 				var args assertcaps.IndexArguments
 				if err := args.UnmarshalCBOR(bytes.NewReader(claim.ArgumentsBytes())); err != nil {
-					return fmt.Errorf("decoding %s arguments: %w", ucan.Command(assertcaps.Index), err)
+					return fmt.Errorf("decoding %s arguments: %w", assertcaps.Index.Command, err)
 				}
 				fmt.Println("      Index:")
 				fmt.Printf("        %s\n", args.Index)

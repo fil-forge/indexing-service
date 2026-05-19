@@ -252,7 +252,7 @@ func (is *IndexingService) jobHandler(mhCtx context.Context, j job, spawn func(j
 					}
 
 					proofStore := ucanlib.NewContainerProofStore(container.New(container.WithDelegations(dlgs...)))
-					proofs, _, err := proofStore.ProofChain(mhCtx, is.id.DID(), ucan.Command(content.Retrieve), space)
+					proofs, _, err := proofStore.ProofChain(mhCtx, is.id.DID(), content.Retrieve.Command, space)
 					if err != nil {
 						log.Warnw("failed to build proof chain, will try next provider result if available", "err", err)
 						lastIndexFetchErr = fmt.Errorf("failed to build proof chain: %w", err)
@@ -269,7 +269,7 @@ func (is *IndexingService) jobHandler(mhCtx context.Context, j job, spawn func(j
 						Auth: types.RetrievalAuth{
 							Issuer:   is.id,
 							Audience: claim.Issuer(),
-							Command:  ucan.Command(content.Retrieve),
+							Command:  content.Retrieve.Command,
 							Subject:  proofs[0].Subject(),
 							Arguments: &content.RetrieveArguments{
 								Blob:  content.Blob{Digest: lcArgs.Content},
@@ -470,7 +470,7 @@ func Cache(ctx context.Context, blobIndex blobindexlookup.BlobIndexLookup, claim
 	defer s.End()
 
 	switch claim.Command() {
-	case ucan.Command(assert.Location):
+	case assert.Location.Command:
 		s.SetAttributes(attribute.KeyValue{Key: "claim", Value: attribute.StringValue("assert/location")})
 		return cacheLocationCommitment(ctx, claims, provIndex, provider, claim, meta)
 	default:
@@ -479,7 +479,7 @@ func Cache(ctx context.Context, blobIndex blobindexlookup.BlobIndexLookup, claim
 }
 
 func cacheLocationCommitment(ctx context.Context, claims contentclaims.Service, provIndex providerindex.ProviderIndex, provider peer.AddrInfo, claim ucan.Invocation, _ ucan.Container) error {
-	if claim.Command() != ucan.Command(assert.Location) {
+	if claim.Command() != assert.Location.Command {
 		return fmt.Errorf("invalid claim type: expected assert/location, got %s", claim.Command().String())
 	}
 
@@ -540,11 +540,11 @@ func Publish(ctx context.Context, id ucan.Signer, blobIndex blobindexlookup.Blob
 	defer s.End()
 
 	switch claim.Command() {
-	case ucan.Command(assert.Equals):
-		s.SetAttributes(attribute.KeyValue{Key: "claim", Value: attribute.StringValue(string(assert.Equals))})
+	case assert.Equals.Command:
+		s.SetAttributes(attribute.KeyValue{Key: "claim", Value: attribute.StringValue(assert.Equals.String())})
 		return publishEqualsClaim(ctx, claims, provIndex, provider, claim, meta)
-	case ucan.Command(assert.Index):
-		s.SetAttributes(attribute.KeyValue{Key: "claim", Value: attribute.StringValue(string(assert.Index))})
+	case assert.Index.Command:
+		s.SetAttributes(attribute.KeyValue{Key: "claim", Value: attribute.StringValue(assert.Index.String())})
 		return publishIndexClaim(ctx, id, blobIndex, claims, provIndex, provider, claim, meta)
 	default:
 		return ErrUnrecognizedClaim
@@ -733,7 +733,7 @@ func fetchBlobIndex(
 		Auth: types.RetrievalAuth{
 			Issuer:   id,
 			Audience: aud.DID(),
-			Command:  ucan.Command(content.Retrieve),
+			Command:  content.Retrieve.Command,
 			Subject:  proofs[0].Subject(),
 			Arguments: &content.RetrieveArguments{
 				Blob:  content.Blob{Digest: blobLink.Hash()},
@@ -759,7 +759,7 @@ func fetchBlobIndex(
 // validateLocationCommitment ensures that the claim is a valid UCAN (signed,
 // not expired etc.) and is a location commitment.
 func validateLocationCommitment(ctx context.Context, claim ucan.Invocation) error {
-	if claim.Command() != ucan.Command(assert.Location) {
+	if claim.Command() != assert.Location.Command {
 		return fmt.Errorf("unexpected command: %s", claim.Command())
 	}
 	return validator.ValidateInvocation(ctx, claim)
@@ -808,7 +808,7 @@ func extractContentRetrieveDelegation(ctx context.Context, audience did.DID, ass
 	}
 
 	proofStore := ucanlib.NewContainerProofStore(assertionMeta)
-	proofs, _, err := proofStore.ProofChain(ctx, audience, ucan.Command(content.Retrieve), rootDelegation.Subject())
+	proofs, _, err := proofStore.ProofChain(ctx, audience, content.Retrieve.Command, rootDelegation.Subject())
 	if err != nil {
 		return nil, fmt.Errorf("building proof chain: %w", err)
 	}

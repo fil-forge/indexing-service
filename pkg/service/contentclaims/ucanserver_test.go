@@ -60,7 +60,7 @@ func TestServer(t *testing.T) {
 		opts []execution.RequestOption
 	}{
 		{
-			name: string(assertcaps.Equals),
+			name: assertcaps.Equals.String(),
 			inv: testutil.Must(assertcaps.Equals.Invoke(
 				testutil.Service,
 				testutil.Service.DID(),
@@ -71,7 +71,7 @@ func TestServer(t *testing.T) {
 			))(t),
 		},
 		{
-			name: string(assertcaps.Index),
+			name: assertcaps.Index.String(),
 			inv: testutil.Must(assertcaps.Index.Invoke(
 				testutil.Service,
 				testutil.Service.DID(),
@@ -81,7 +81,7 @@ func TestServer(t *testing.T) {
 			))(t),
 		},
 		{
-			name: string(claimcaps.Cache),
+			name: claimcaps.Cache.String(),
 			inv:  cacheInvocation,
 			opts: []execution.RequestOption{execution.WithInvocations(locationCommitment)},
 		},
