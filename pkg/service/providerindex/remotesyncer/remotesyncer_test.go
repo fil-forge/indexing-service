@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/fil-forge/indexing-service/pkg/internal/testutil"
-	"github.com/fil-forge/libforge/bytemap"
 	"github.com/fil-forge/indexing-service/pkg/types"
+	"github.com/fil-forge/libforge/bytemap"
 	"github.com/ipfs/go-cid"
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/codec/dagcbor"
@@ -218,12 +218,13 @@ func (mb *mockBatcher) SetExpirable(ctx context.Context, key multihash.Multihash
 
 func (mb *mockBatcher) Commit(ctx context.Context) error {
 	for _, c := range mb.commands {
-		if c.op == "add" {
+		switch c.op {
+		case "add":
 			_, err := mb.store.Add(ctx, c.key, c.values...)
 			if err != nil {
 				return err
 			}
-		} else if c.op == "setExpirable" {
+		case "setExpirable":
 			err := mb.store.SetExpirable(ctx, c.key, c.expire)
 			if err != nil {
 				return err
