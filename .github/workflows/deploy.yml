@@ -33,7 +33,7 @@ jobs:
     with:
       env: staging
       workspace: staging
-      did: did:web:staging.indexer.storacha.network
+      did: did:web:staging.indexer.forge.fil.one
       ipni-endpoint: ${{ vars.STAGING_IPNI_ENDPOINT }}
       ipni-fallback-endpoints: ${{ vars.STAGING_IPNI_FALLBACK_ENDPOINTS }}
       ipni-announce-urls: ${{ vars.STAGING_IPNI_ANNOUNCE_URLS }}
@@ -54,7 +54,7 @@ jobs:
       env: warm-staging
       workspace: warm-staging
       network: warm
-      did: did:web:staging.indexer.warm.storacha.network
+      did: did:web:staging.indexer.warm.forge.fil.one
       ipni-endpoint: ${{ vars.WARM_STAGING_IPNI_ENDPOINT }}
       ipni-fallback-endpoints: ${{ vars.WARM_STAGING_IPNI_FALLBACK_ENDPOINTS }}
       ipni-announce-urls: ${{ vars.WARM_STAGING_IPNI_ANNOUNCE_URLS }}
@@ -74,7 +74,7 @@ jobs:
     with:
       env: production
       workspace: prod
-      did: did:web:indexer.storacha.network
+      did: did:web:indexer.forge.fil.one
       ipni-endpoint: ${{ vars.PROD_IPNI_ENDPOINT }}
       ipni-fallback-endpoints: ${{ vars.PROD_IPNI_FALLBACK_ENDPOINTS }}
       ipni-announce-urls: ${{ vars.PROD_IPNI_ANNOUNCE_URLS }}
@@ -95,7 +95,7 @@ jobs:
       env: forge-prod
       workspace: forge-prod
       network: forge
-      did: did:web:indexer.forge.storacha.network
+      did: did:web:indexer.forge.fil.one
       ipni-endpoint: ${{ vars.FORGE_PROD_IPNI_ENDPOINT }}
       ipni-fallback-endpoints: ${{ vars.FORGE_PROD_IPNI_FALLBACK_ENDPOINTS }}
       ipni-announce-urls: ${{ vars.FORGE_PROD_IPNI_ANNOUNCE_URLS }}
@@ -115,7 +115,7 @@ jobs:
       env: forge-test
       workspace: forge-test
       network: test
-      did: did:web:indexer.test.storacha.network
+      did: did:web:indexer.test.forge.fil.one
       ipni-endpoint: ${{ vars.FORGE_TEST_IPNI_ENDPOINT }}
       ipni-fallback-endpoints: ${{ vars.FORGE_TEST_IPNI_FALLBACK_ENDPOINTS }}
       ipni-announce-urls: ${{ vars.FORGE_TEST_IPNI_ANNOUNCE_URLS }}
