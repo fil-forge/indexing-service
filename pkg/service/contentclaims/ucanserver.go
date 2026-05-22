@@ -8,9 +8,9 @@ import (
 
 func NewUCANServer(id principal.Signer, service types.Publisher, options ...server.HTTPOption) (*server.HTTPServer, error) {
 	ucanServer := server.NewHTTP(id, options...)
-	ucanService := NewUCANService(service)
-	for command, handler := range ucanService {
-		ucanServer.Handle(command, handler)
+	routes := NewUCANService(service)
+	for _, route := range routes {
+		ucanServer.Handle(route.Command, route.Handler)
 	}
 	return ucanServer, nil
 }

@@ -15,15 +15,16 @@ import (
 	"github.com/fil-forge/libforge/blobindex"
 	"github.com/fil-forge/libforge/commands/content"
 	"github.com/fil-forge/libforge/ucan/retrieval"
+	"github.com/fil-forge/ucantone/binding"
 	"github.com/fil-forge/ucantone/execution"
 	"github.com/fil-forge/ucantone/ipld/datamodel"
 	"github.com/fil-forge/ucantone/ucan"
+	"github.com/fil-forge/ucantone/ucan/command"
 	"github.com/fil-forge/ucantone/ucan/container"
-	"github.com/fil-forge/ucantone/validator/bindcom"
 	"github.com/stretchr/testify/require"
 )
 
-var contentRetrieve, _ = bindcom.Parse[datamodel.Map]("/content/retrieve")
+var contentRetrieve = binding.Bind[*datamodel.Map, *datamodel.Map](command.MustParse("/content/retrieve"))
 
 func TestBlobIndexLookup__Find(t *testing.T) {
 	provider := testutil.RandomProviderResult(t)
@@ -47,7 +48,7 @@ func TestBlobIndexLookup__Find(t *testing.T) {
 		if err := res.SetMetadata(respMeta); err != nil {
 			return err
 		}
-		return res.SetSuccess(datamodel.Map{})
+		return res.SetSuccess(&datamodel.Map{})
 	})
 
 	testServer := httptest.NewServer(srv)

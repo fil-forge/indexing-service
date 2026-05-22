@@ -70,7 +70,7 @@ func doAuthorizedRetrieval(ctx context.Context, httpClient *http.Client, request
 		return nil, err
 	}
 
-	res, err := c.Execute(execution.NewRequest(ctx, inv, execution.WithProofs(request.Auth.Proofs...)))
+	res, err := c.Execute(execution.NewRequest(ctx, inv, execution.WithDelegations(request.Auth.Proofs...)))
 	if err != nil {
 		return nil, fmt.Errorf("executing retrieval invocation: %w", err)
 	}

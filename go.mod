@@ -19,8 +19,8 @@ require (
 	github.com/fil-forge/automobile v0.0.1
 	github.com/fil-forge/go-ipni-tools v0.0.0-20260519194815-545b9421aec0
 	github.com/fil-forge/go-libstoracha v0.0.0-20260507180245-218ac18ff773
-	github.com/fil-forge/libforge v0.0.0-20260519193938-fc442aef7e5c
-	github.com/fil-forge/ucantone v0.0.0-20260519193222-ad31490eaa10
+	github.com/fil-forge/libforge v0.0.0-20260521215559-0f7fa19c9ebc
+	github.com/fil-forge/ucantone v0.0.0-20260521210642-84d8c533075b
 	github.com/getsentry/sentry-go v0.33.0
 	github.com/google/uuid v1.6.0
 	github.com/ipfs/go-cid v0.6.1
@@ -93,6 +93,7 @@ require (
 	github.com/ebitengine/purego v0.8.4 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fil-forge/go-ucanto v0.0.0-20260507172450-5cb5d073f8ab // indirect
+	github.com/filecoin-project/go-state-types v0.18.0 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
