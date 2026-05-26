@@ -242,7 +242,10 @@ var serverCmd = &cli.Command{
 					sc.IPNIDirectAnnounceURLs = presets.IPNIAnnounceURLs
 				}
 
-				privKey, err := crypto.UnmarshalEd25519PrivateKey(id.Raw())
+				// id.Raw() returns the 32-byte seed; libp2p's
+				// UnmarshalEd25519PrivateKey wants the 64-byte stdlib form
+				// (seed||pub). Expand via NewKeyFromSeed before handing over.
+				privKey, err := crypto.UnmarshalEd25519PrivateKey(crypto_ed25519.NewKeyFromSeed(id.Raw()))
 				if err != nil {
 					return fmt.Errorf("unmarshaling private key: %w", err)
 				}
@@ -334,5 +337,7 @@ func signerFromPEMFile(path string) (principal.Signer, error) {
 		return nil, fmt.Errorf("could not find a PRIVATE KEY block in the PEM file")
 	}
 
-	return ed25519.FromRaw(*privateKey)
+	// ucantone's FromRaw wants the 32-byte seed; crypto/ed25519.PrivateKey is
+	// 64 bytes (seed || pub), so extract the seed before handing it over.
+	return ed25519.FromRaw(privateKey.Seed())
 }

@@ -2,6 +2,7 @@ package aws
 
 import (
 	"context"
+	crypto_ed25519 "crypto/ed25519"
 	"crypto/tls"
 	"encoding/json"
 	"errors"
@@ -120,7 +121,9 @@ func FromEnv(ctx context.Context) Config {
 		}
 	}
 
-	cryptoPrivKey, err := crypto.UnmarshalEd25519PrivateKey(id.Raw())
+	// id.Raw() returns the 32-byte seed; libp2p's UnmarshalEd25519PrivateKey
+	// wants the 64-byte stdlib form (seed||pub). Expand via NewKeyFromSeed.
+	cryptoPrivKey, err := crypto.UnmarshalEd25519PrivateKey(crypto_ed25519.NewKeyFromSeed(id.Raw()))
 	if err != nil {
 		panic(fmt.Errorf("unmarshaling private key: %w", err))
 	}
