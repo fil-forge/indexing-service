@@ -19,8 +19,7 @@ var log = logging.Logger("contentclaims")
 
 func NewUCANService(service types.Publisher) []server.Route {
 	return []server.Route{
-		server.NewRoute(
-			assertcaps.Equals,
+		assertcaps.Equals.Route(
 			func(
 				req *binding.Request[*assertcaps.EqualsArguments],
 				res *binding.Response[*assertcaps.EqualsOK],
@@ -34,8 +33,7 @@ func NewUCANService(service types.Publisher) []server.Route {
 				return res.SetSuccess(&assertcaps.EqualsOK{})
 			},
 		),
-		server.NewRoute(
-			assertcaps.Index,
+		assertcaps.Index.Route(
 			func(
 				req *binding.Request[*assertcaps.IndexArguments],
 				res *binding.Response[*assertcaps.IndexOK],
@@ -49,8 +47,7 @@ func NewUCANService(service types.Publisher) []server.Route {
 				return res.SetSuccess(&assertcaps.IndexOK{})
 			},
 		),
-		server.NewRoute(
-			claimcaps.Cache,
+		claimcaps.Cache.Route(
 			func(
 				req *binding.Request[*claimcaps.CacheArguments],
 				res *binding.Response[*claimcaps.CacheOK],
