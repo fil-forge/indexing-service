@@ -19,7 +19,7 @@ require (
 	github.com/fil-forge/automobile v0.0.1
 	github.com/fil-forge/go-ipni-tools v0.0.0-20260519194815-545b9421aec0
 	github.com/fil-forge/go-libstoracha v0.0.0-20260507180245-218ac18ff773
-	github.com/fil-forge/libforge v0.0.0-20260522130153-a38febd34c97
+	github.com/fil-forge/libforge v0.0.0-20260527183922-707e595359d9
 	github.com/fil-forge/ucantone v0.0.0-20260522152152-eda937bc2684
 	github.com/getsentry/sentry-go v0.33.0
 	github.com/google/uuid v1.6.0

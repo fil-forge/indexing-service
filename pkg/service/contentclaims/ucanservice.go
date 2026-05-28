@@ -28,7 +28,12 @@ func NewUCANService(service types.Publisher) []server.Route {
 				err := service.Publish(req.Context(), claim, req.Metadata())
 				if err != nil {
 					log.Errorf("publishing equals claim: %s", err)
-					return err
+					// Report via the receipt machinery (CBOR-encoded failure)
+					// rather than returning the raw error — the latter
+					// propagates up to HTTPServer.ServeHTTP which calls
+					// http.Error and emits text/plain, which the UCAN client
+					// cannot decode (see ucantone/server/http.go:74-78).
+					return res.SetFailure(err)
 				}
 				return res.SetSuccess(&assertcaps.EqualsOK{})
 			},
@@ -42,7 +47,7 @@ func NewUCANService(service types.Publisher) []server.Route {
 				err := service.Publish(req.Context(), claim, req.Metadata())
 				if err != nil {
 					log.Errorf("publishing index claim: %s", err)
-					return err
+					return res.SetFailure(err)
 				}
 				return res.SetSuccess(&assertcaps.IndexOK{})
 			},

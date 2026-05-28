@@ -258,6 +258,18 @@ func (is *IndexingService) jobHandler(mhCtx context.Context, j job, spawn func(j
 						lastIndexFetchErr = fmt.Errorf("failed to build proof chain: %w", err)
 						continue
 					}
+					// ProofChain returns (nil, nil) when no chain matches; the
+					// proofs[0].Subject() access below would otherwise panic.
+					// Skip this provider — a later result might supply a usable
+					// chain, or the loop will fall through with a useful error.
+					if len(proofs) == 0 {
+						log.Warnw("no /content/retrieve proof chain in query delegations, will try next provider result if available",
+							"audience", is.id.DID().String(),
+							"subject", space.String(),
+						)
+						lastIndexFetchErr = fmt.Errorf("no /content/retrieve proof chain for audience %s subject %s", is.id.DID(), space)
+						continue
+					}
 
 					contentRange := content.Range{
 						Start: lcArgs.Range.Start,
@@ -386,6 +398,17 @@ func urlForResource(provider peer.AddrInfo, replacements []replacement) (*url.UR
 			url.Path = strings.ReplaceAll(url.Path, resourcePlaceholder, resourceID)
 		}
 		if replacedAny {
+			// maurl.ToURL produces a path without a leading slash because
+			// multiaddrs are path-segment based. URL.String() papers this
+			// over when rendering, but URL.RequestURI() (which
+			// http.Request.Write uses on the wire) reproduces the path
+			// verbatim — and an HTTP/1.1 request-target without a leading
+			// slash is malformed, causing Go's net/http server to reject
+			// it with a bare "400 Bad Request" before any handler runs.
+			// Normalize here.
+			if !strings.HasPrefix(url.Path, "/") {
+				url.Path = "/" + url.Path
+			}
 			return url, nil
 		}
 	}
@@ -811,6 +834,35 @@ func extractContentRetrieveDelegation(ctx context.Context, audience did.DID, ass
 	proofs, _, err := proofStore.ProofChain(ctx, audience, content.Retrieve.Command, rootDelegation.Subject())
 	if err != nil {
 		return nil, fmt.Errorf("building proof chain: %w", err)
+	}
+
+	// ProofChain yields zero delegations (with no error) when no chain
+	// matches; downstream callers index proofs[0] unconditionally, so guard
+	// here to return an error instead of letting them panic.
+	if len(proofs) == 0 {
+		// TODO(forrest): temporary diagnostic for the
+		// /content/retrieve chain reconstruction bug — dumps every
+		// delegation in the container so we can see what the indexer
+		// has to work with vs. what it's looking for. Remove once the
+		// root cause is identified.
+		log.Warnw("no /content/retrieve chain found; dumping container delegations",
+			"want_audience", audience.String(),
+			"want_command", content.Retrieve.Command.String(),
+			"want_subject", rootDelegation.Subject().String(),
+			"root_retrieval_auth", meta.RetrievalAuth[0].String(),
+			"delegation_count", len(assertionMeta.Delegations()),
+		)
+		for i, d := range assertionMeta.Delegations() {
+			log.Warnw("container delegation",
+				"index", i,
+				"link", d.Link().String(),
+				"issuer", d.Issuer().String(),
+				"audience", d.Audience().String(),
+				"subject", d.Subject().String(),
+				"command", d.Command().String(),
+			)
+		}
+		return nil, fmt.Errorf("no /content/retrieve proof chain found for audience %s subject %s (root retrieval auth: %s)", audience, rootDelegation.Subject(), meta.RetrievalAuth[0])
 	}
 
 	return proofs, nil
