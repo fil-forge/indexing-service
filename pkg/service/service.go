@@ -840,28 +840,6 @@ func extractContentRetrieveDelegation(ctx context.Context, audience did.DID, ass
 	// matches; downstream callers index proofs[0] unconditionally, so guard
 	// here to return an error instead of letting them panic.
 	if len(proofs) == 0 {
-		// TODO(forrest): temporary diagnostic for the
-		// /content/retrieve chain reconstruction bug — dumps every
-		// delegation in the container so we can see what the indexer
-		// has to work with vs. what it's looking for. Remove once the
-		// root cause is identified.
-		log.Warnw("no /content/retrieve chain found; dumping container delegations",
-			"want_audience", audience.String(),
-			"want_command", content.Retrieve.Command.String(),
-			"want_subject", rootDelegation.Subject().String(),
-			"root_retrieval_auth", meta.RetrievalAuth[0].String(),
-			"delegation_count", len(assertionMeta.Delegations()),
-		)
-		for i, d := range assertionMeta.Delegations() {
-			log.Warnw("container delegation",
-				"index", i,
-				"link", d.Link().String(),
-				"issuer", d.Issuer().String(),
-				"audience", d.Audience().String(),
-				"subject", d.Subject().String(),
-				"command", d.Command().String(),
-			)
-		}
 		return nil, fmt.Errorf("no /content/retrieve proof chain found for audience %s subject %s (root retrieval auth: %s)", audience, rootDelegation.Subject(), meta.RetrievalAuth[0])
 	}
 

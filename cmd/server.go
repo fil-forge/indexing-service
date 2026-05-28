@@ -188,24 +188,8 @@ var serverCmd = &cli.Command{
 				if err != nil {
 					return fmt.Errorf("creating cached HTTP resolver: %w", err)
 				}
-				// Self-resolution short-circuit: invocations from operators
-				// carry a delegation chain rooted at this service's own DID
-				// (indexing-service → delegator → operator). To validate the
-				// root delegation's signature, the validator resolves the
-				// indexing service's own DID — which the map and HTTP-with-globs
-				// tiers can't satisfy (the service isn't in its own preset
-				// map, and HTTP globs reject self-lookups). Serve the local
-				// identity directly so we don't fetch did.json from
-				// ourselves over HTTP.
-				selfDID := id.DID()
-				selfVerifier := id.Verifier()
-				selfResolv := func(_ context.Context, input did.DID) (ucan.Verifier, error) {
-					if input != selfDID {
-						return nil, fmt.Errorf("not the service's own DID")
-					}
-					return selfVerifier, nil
-				}
-				tierResolv := didresolver.NewTieredResolver(selfResolv, mapResolv.Resolve, cacheResolv.Resolve)
+				selfResolv := didresolver.NewSelfResolver(id)
+				tierResolv := didresolver.NewTieredResolver(selfResolv.Resolve, mapResolv.Resolve, cacheResolv.Resolve)
 
 				opts = append(
 					opts,
