@@ -39,7 +39,8 @@ func makeHandler(cfg aws.Config) any {
 	if err != nil {
 		panic(fmt.Errorf("creating cached HTTP resolver: %w", err))
 	}
-	tierResolv := didresolver.NewTieredResolver(mapResolv.Resolve, cacheResolv.Resolve)
+	selfResolv := didresolver.NewSelfResolver(cfg.ID)
+	tierResolv := didresolver.NewTieredResolver(selfResolv.Resolve, mapResolv.Resolve, cacheResolv.Resolve)
 
 	handler := httpadapter.NewV2(
 		server.PostClaimsHandler(

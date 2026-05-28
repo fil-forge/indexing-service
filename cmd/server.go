@@ -188,7 +188,8 @@ var serverCmd = &cli.Command{
 				if err != nil {
 					return fmt.Errorf("creating cached HTTP resolver: %w", err)
 				}
-				tierResolv := didresolver.NewTieredResolver(mapResolv.Resolve, cacheResolv.Resolve)
+				selfResolv := didresolver.NewSelfResolver(id)
+				tierResolv := didresolver.NewTieredResolver(selfResolv.Resolve, mapResolv.Resolve, cacheResolv.Resolve)
 
 				opts = append(
 					opts,

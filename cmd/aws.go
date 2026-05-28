@@ -57,7 +57,8 @@ var awsCmd = &cli.Command{
 		if err != nil {
 			return fmt.Errorf("creating cached HTTP resolver: %w", err)
 		}
-		tierResolv := didresolver.NewTieredResolver(mapResolv.Resolve, cacheResolv.Resolve)
+		selfResolv := didresolver.NewSelfResolver(cfg.ID)
+		tierResolv := didresolver.NewTieredResolver(selfResolv.Resolve, mapResolv.Resolve, cacheResolv.Resolve)
 
 		srvOpts = append(
 			srvOpts,
