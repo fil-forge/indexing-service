@@ -65,16 +65,16 @@ type Client struct {
 	telemetryEnabled bool
 }
 
-// execute sends the given invocation using the provided client and decodes the
-// response into the specified type.
+// execute sends the given invocation using the provided executor and decodes
+// the response into the specified type.
 func execute[T cbg.CBORUnmarshaler](
 	ctx context.Context,
-	client *client.HTTPClient,
+	executor execution.Executor,
 	inv ucan.Invocation,
 	options ...execution.RequestOption,
 ) (T, ucan.Receipt, error) {
 	var zero T
-	resp, err := client.Execute(execution.NewRequest(ctx, inv, options...))
+	resp, err := executor.Execute(execution.NewRequest(ctx, inv, options...))
 	if err != nil {
 		return zero, nil, fmt.Errorf("executing invocation: %w", err)
 	}
