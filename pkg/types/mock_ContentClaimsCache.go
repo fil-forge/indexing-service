@@ -7,7 +7,7 @@ package types
 import (
 	"context"
 
-	"github.com/fil-forge/go-ucanto/core/delegation"
+	"github.com/fil-forge/ucantone/ucan"
 	"github.com/ipfs/go-cid"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -40,23 +40,23 @@ func (_m *MockContentClaimsCache) EXPECT() *MockContentClaimsCache_Expecter {
 }
 
 // Get provides a mock function for the type MockContentClaimsCache
-func (_mock *MockContentClaimsCache) Get(ctx context.Context, key cid.Cid) (delegation.Delegation, error) {
+func (_mock *MockContentClaimsCache) Get(ctx context.Context, key cid.Cid) (ucan.Invocation, error) {
 	ret := _mock.Called(ctx, key)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Get")
 	}
 
-	var r0 delegation.Delegation
+	var r0 ucan.Invocation
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, cid.Cid) (delegation.Delegation, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, cid.Cid) (ucan.Invocation, error)); ok {
 		return returnFunc(ctx, key)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, cid.Cid) delegation.Delegation); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, cid.Cid) ucan.Invocation); ok {
 		r0 = returnFunc(ctx, key)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(delegation.Delegation)
+			r0 = ret.Get(0).(ucan.Invocation)
 		}
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, cid.Cid) error); ok {
@@ -97,18 +97,18 @@ func (_c *MockContentClaimsCache_Get_Call) Run(run func(ctx context.Context, key
 	return _c
 }
 
-func (_c *MockContentClaimsCache_Get_Call) Return(delegation1 delegation.Delegation, err error) *MockContentClaimsCache_Get_Call {
-	_c.Call.Return(delegation1, err)
+func (_c *MockContentClaimsCache_Get_Call) Return(invocation ucan.Invocation, err error) *MockContentClaimsCache_Get_Call {
+	_c.Call.Return(invocation, err)
 	return _c
 }
 
-func (_c *MockContentClaimsCache_Get_Call) RunAndReturn(run func(ctx context.Context, key cid.Cid) (delegation.Delegation, error)) *MockContentClaimsCache_Get_Call {
+func (_c *MockContentClaimsCache_Get_Call) RunAndReturn(run func(ctx context.Context, key cid.Cid) (ucan.Invocation, error)) *MockContentClaimsCache_Get_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Set provides a mock function for the type MockContentClaimsCache
-func (_mock *MockContentClaimsCache) Set(ctx context.Context, key cid.Cid, value delegation.Delegation, expires bool) error {
+func (_mock *MockContentClaimsCache) Set(ctx context.Context, key cid.Cid, value ucan.Invocation, expires bool) error {
 	ret := _mock.Called(ctx, key, value, expires)
 
 	if len(ret) == 0 {
@@ -116,7 +116,7 @@ func (_mock *MockContentClaimsCache) Set(ctx context.Context, key cid.Cid, value
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, cid.Cid, delegation.Delegation, bool) error); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, cid.Cid, ucan.Invocation, bool) error); ok {
 		r0 = returnFunc(ctx, key, value, expires)
 	} else {
 		r0 = ret.Error(0)
@@ -132,13 +132,13 @@ type MockContentClaimsCache_Set_Call struct {
 // Set is a helper method to define mock.On call
 //   - ctx context.Context
 //   - key cid.Cid
-//   - value delegation.Delegation
+//   - value ucan.Invocation
 //   - expires bool
 func (_e *MockContentClaimsCache_Expecter) Set(ctx interface{}, key interface{}, value interface{}, expires interface{}) *MockContentClaimsCache_Set_Call {
 	return &MockContentClaimsCache_Set_Call{Call: _e.mock.On("Set", ctx, key, value, expires)}
 }
 
-func (_c *MockContentClaimsCache_Set_Call) Run(run func(ctx context.Context, key cid.Cid, value delegation.Delegation, expires bool)) *MockContentClaimsCache_Set_Call {
+func (_c *MockContentClaimsCache_Set_Call) Run(run func(ctx context.Context, key cid.Cid, value ucan.Invocation, expires bool)) *MockContentClaimsCache_Set_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -148,9 +148,9 @@ func (_c *MockContentClaimsCache_Set_Call) Run(run func(ctx context.Context, key
 		if args[1] != nil {
 			arg1 = args[1].(cid.Cid)
 		}
-		var arg2 delegation.Delegation
+		var arg2 ucan.Invocation
 		if args[2] != nil {
-			arg2 = args[2].(delegation.Delegation)
+			arg2 = args[2].(ucan.Invocation)
 		}
 		var arg3 bool
 		if args[3] != nil {
@@ -171,7 +171,7 @@ func (_c *MockContentClaimsCache_Set_Call) Return(err error) *MockContentClaimsC
 	return _c
 }
 
-func (_c *MockContentClaimsCache_Set_Call) RunAndReturn(run func(ctx context.Context, key cid.Cid, value delegation.Delegation, expires bool) error) *MockContentClaimsCache_Set_Call {
+func (_c *MockContentClaimsCache_Set_Call) RunAndReturn(run func(ctx context.Context, key cid.Cid, value ucan.Invocation, expires bool) error) *MockContentClaimsCache_Set_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	crypto_ed25519 "crypto/ed25519"
 	"crypto/x509"
 	"encoding/json"
@@ -9,15 +10,18 @@ import (
 	"io"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
-	"github.com/fil-forge/go-libstoracha/principalresolver"
-	"github.com/fil-forge/go-ucanto/did"
-	"github.com/fil-forge/go-ucanto/principal"
-	ed25519 "github.com/fil-forge/go-ucanto/principal/ed25519/signer"
-	"github.com/fil-forge/go-ucanto/principal/signer"
-	userver "github.com/fil-forge/go-ucanto/server"
-	"github.com/fil-forge/go-ucanto/validator"
+	"github.com/fil-forge/libforge/didresolver"
+	"github.com/fil-forge/ucantone/did"
+	"github.com/fil-forge/ucantone/principal"
+	"github.com/fil-forge/ucantone/principal/ed25519"
+	"github.com/fil-forge/ucantone/principal/signer"
+	"github.com/fil-forge/ucantone/principal/verifier"
+	userver "github.com/fil-forge/ucantone/server"
+	"github.com/fil-forge/ucantone/ucan"
+	"github.com/fil-forge/ucantone/validator"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/ipni/go-libipni/maurl"
 	"github.com/ipni/go-libipni/metadata"
@@ -106,7 +110,7 @@ var serverCmd = &cli.Command{
 				&cli.StringSliceFlag{
 					Name:    "resolve-did-web",
 					EnvVars: []string{"RESOLVE_DID_WEB"},
-					Usage:   "did:web DIDs to resolve via HTTP (fetches /.well-known/did.json). Can be specified multiple times or comma-separated in env var.",
+					Usage:   "Patterns for restricting DID resolution via HTTP (fetches /.well-known/did.json). Can be specified multiple times or comma-separated in env var.",
 				},
 				&cli.BoolFlag{
 					Name:    "insecure-did-resolution",
@@ -157,45 +161,47 @@ var serverCmd = &cli.Command{
 
 				opts = append(opts, server.WithIdentity(id))
 
-				// Create principal resolver
-				var presolv validator.PrincipalResolver
-				resolveDIDs := cCtx.StringSlice("resolve-did-web")
-				if len(resolveDIDs) > 0 {
-					// Use HTTP-based resolution for specified DIDs
-					var webDIDs []did.DID
-					for _, d := range resolveDIDs {
-						parsed, err := did.Parse(d)
-						if err != nil {
-							return fmt.Errorf("parsing resolve-did-web DID %s: %w", d, err)
-						}
-						webDIDs = append(webDIDs, parsed)
-					}
-
-					var rslvOpts []principalresolver.Option
-					if cCtx.Bool("insecure-did-resolution") {
-						rslvOpts = append(rslvOpts, principalresolver.InsecureResolution())
-					}
-
-					httpResolver, err := principalresolver.NewHTTPResolver(webDIDs, rslvOpts...)
-					if err != nil {
-						return fmt.Errorf("creating HTTP principal resolver: %w", err)
-					}
-					presolv, err = principalresolver.NewCachedResolver(httpResolver, 24*time.Hour)
-					if err != nil {
-						return fmt.Errorf("creating cached resolver: %w", err)
-					}
-				} else {
-					// Fall back to static mapping from presets
-					staticResolver, err := principalresolver.NewMapResolver(presets.PrincipalMapping)
-					if err != nil {
-						return fmt.Errorf("creating principal resolver: %w", err)
-					}
-					presolv = staticResolver
+				// Create DID resolver
+				resolveDIDPatterns := cCtx.StringSlice("resolve-did-web")
+				// Use HTTP-based resolution for specified patterns
+				for i, d := range resolveDIDPatterns {
+					// remove "did:web:" prefix if present, since the resolver expects
+					// just the domain/path part
+					resolveDIDPatterns[i] = strings.TrimPrefix(d, "did:web:")
 				}
+				rslvOpts := []didresolver.Option{
+					didresolver.WithPatterns(resolveDIDPatterns...),
+				}
+				if cCtx.Bool("insecure-did-resolution") {
+					rslvOpts = append(rslvOpts, didresolver.InsecureResolution())
+				}
+
+				mapResolv, err := didresolver.NewMapResolver(presets.PrincipalMapping)
+				if err != nil {
+					return fmt.Errorf("creating map resolver: %w", err)
+				}
+				httpResolv, err := didresolver.NewHTTPResolver(rslvOpts...)
+				if err != nil {
+					return fmt.Errorf("creating HTTP resolver: %w", err)
+				}
+				cacheResolv, err := didresolver.NewCachedResolver(httpResolv.Resolve, time.Hour*3)
+				if err != nil {
+					return fmt.Errorf("creating cached HTTP resolver: %w", err)
+				}
+				selfResolv := didresolver.NewSelfResolver(id)
+				tierResolv := didresolver.NewTieredResolver(selfResolv.Resolve, mapResolv.Resolve, cacheResolv.Resolve)
+
 				opts = append(
 					opts,
 					server.WithContentClaimsOptions(
-						userver.WithPrincipalResolver(presolv.ResolveDIDKey),
+						userver.WithValidationOptions(
+							validator.WithDIDVerifierResolvers(map[string]validator.DIDVerifierResolverFunc{
+								"key": func(ctx context.Context, did did.DID) (ucan.Verifier, error) {
+									return verifier.FromDIDKey(did)
+								},
+								"web": tierResolv.Resolve,
+							}),
+						),
 					),
 				)
 
@@ -237,7 +243,10 @@ var serverCmd = &cli.Command{
 					sc.IPNIDirectAnnounceURLs = presets.IPNIAnnounceURLs
 				}
 
-				privKey, err := crypto.UnmarshalEd25519PrivateKey(id.Raw())
+				// id.Raw() returns the 32-byte seed; libp2p's
+				// UnmarshalEd25519PrivateKey wants the 64-byte stdlib form
+				// (seed||pub). Expand via NewKeyFromSeed before handing over.
+				privKey, err := crypto.UnmarshalEd25519PrivateKey(crypto_ed25519.NewKeyFromSeed(id.Raw()))
 				if err != nil {
 					return fmt.Errorf("unmarshaling private key: %w", err)
 				}
@@ -329,5 +338,7 @@ func signerFromPEMFile(path string) (principal.Signer, error) {
 		return nil, fmt.Errorf("could not find a PRIVATE KEY block in the PEM file")
 	}
 
-	return ed25519.FromRaw(*privateKey)
+	// ucantone's FromRaw wants the 32-byte seed; crypto/ed25519.PrivateKey is
+	// 64 bytes (seed || pub), so extract the seed before handing it over.
+	return ed25519.FromRaw(privateKey.Seed())
 }

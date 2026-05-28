@@ -4,10 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/fil-forge/go-libstoracha/blobindex"
-	"github.com/fil-forge/indexing-service/pkg/internal/link"
 	"github.com/fil-forge/indexing-service/pkg/telemetry"
 	"github.com/fil-forge/indexing-service/pkg/types"
+	"github.com/fil-forge/libforge/blobindex"
 	"github.com/ipni/go-libipni/find/model"
 	"go.opentelemetry.io/otel/attribute"
 )
@@ -23,30 +22,15 @@ func NewSimpleProviderCacher(providerStore types.ProviderStore) ProviderCacher {
 	return &simpleProviderCacher{providerStore: providerStore}
 }
 
-func (s *simpleProviderCacher) CacheProviderForIndexRecords(ctx context.Context, provider model.ProviderResult, index blobindex.ShardedDagIndexView) error {
+func (s *simpleProviderCacher) CacheProviderForIndexRecords(ctx context.Context, provider model.ProviderResult, index blobindex.ShardedDagIndex) error {
 	ctx, span := telemetry.StartSpan(ctx, "ProviderCacher.CacheProviderForIndexRecords")
 	defer span.End()
 
 	batch := s.providerStore.Batch()
-
-	// Prioritize the root
-	rootDigest := link.ToCID(index.Content()).Hash()
-	err := batch.Add(ctx, rootDigest, provider)
-	if err != nil {
-		return fmt.Errorf("batch adding provider for root: %w", err)
-	}
-	err = batch.SetExpirable(ctx, rootDigest, true)
-	if err != nil {
-		return fmt.Errorf("batch setting provider expirable for root: %w", err)
-	}
-
 	total := 0
 	size := 1
 	for _, shardIndex := range index.Shards().Iterator() {
 		for hash := range shardIndex.Iterator() {
-			if string(hash) == string(rootDigest) {
-				continue // already added
-			}
 			err := batch.Add(ctx, hash, provider)
 			if err != nil {
 				return fmt.Errorf("batch adding provider: %w", err)

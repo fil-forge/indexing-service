@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -9,22 +10,31 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/fil-forge/go-libstoracha/advertisement"
-	"github.com/fil-forge/go-libstoracha/capabilities/assert"
-	"github.com/fil-forge/go-libstoracha/capabilities/space/content"
-	"github.com/fil-forge/go-libstoracha/metadata"
-	"github.com/fil-forge/go-ucanto/core/dag/blockstore"
-	"github.com/fil-forge/go-ucanto/core/delegation"
-	"github.com/fil-forge/go-ucanto/core/invocation"
-	"github.com/fil-forge/go-ucanto/core/iterable"
-	"github.com/fil-forge/go-ucanto/did"
-	"github.com/fil-forge/go-ucanto/principal/ed25519/verifier"
-	"github.com/fil-forge/go-ucanto/ucan"
-	"github.com/fil-forge/go-ucanto/validator"
+	"github.com/fil-forge/go-ipni-tools/pkg/advertisement"
+	"github.com/fil-forge/go-ipni-tools/pkg/metadata"
+	"github.com/fil-forge/indexing-service/pkg/internal/jobwalker"
+	"github.com/fil-forge/indexing-service/pkg/internal/jobwalker/parallelwalk"
+	"github.com/fil-forge/indexing-service/pkg/internal/jobwalker/singlewalk"
+	"github.com/fil-forge/indexing-service/pkg/service/blobindexlookup"
+	"github.com/fil-forge/indexing-service/pkg/service/contentclaims"
+	"github.com/fil-forge/indexing-service/pkg/service/providerindex"
+	"github.com/fil-forge/indexing-service/pkg/service/queryresult"
+	"github.com/fil-forge/indexing-service/pkg/telemetry"
+	"github.com/fil-forge/indexing-service/pkg/types"
+	"github.com/fil-forge/libforge/blobindex"
+	"github.com/fil-forge/libforge/bytemap"
+	"github.com/fil-forge/libforge/commands/assert"
+	"github.com/fil-forge/libforge/commands/content"
+	"github.com/fil-forge/libforge/digestutil"
+	ucanlib "github.com/fil-forge/libforge/ucan"
+	"github.com/fil-forge/ucantone/did"
+	"github.com/fil-forge/ucantone/principal"
+	ed25519_verifier "github.com/fil-forge/ucantone/principal/ed25519/verifier"
+	"github.com/fil-forge/ucantone/ucan"
+	"github.com/fil-forge/ucantone/ucan/container"
+	"github.com/fil-forge/ucantone/validator"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/ipld/go-ipld-prime"
-	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	"github.com/ipni/go-libipni/find/model"
 	"github.com/ipni/go-libipni/maurl"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -32,20 +42,6 @@ import (
 	"github.com/multiformats/go-multicodec"
 	"github.com/multiformats/go-multihash"
 	"go.opentelemetry.io/otel/attribute"
-
-	"github.com/fil-forge/go-libstoracha/blobindex"
-	"github.com/fil-forge/go-libstoracha/bytemap"
-	"github.com/fil-forge/go-libstoracha/digestutil"
-	"github.com/fil-forge/indexing-service/pkg/internal/jobwalker"
-	"github.com/fil-forge/indexing-service/pkg/internal/jobwalker/parallelwalk"
-	"github.com/fil-forge/indexing-service/pkg/internal/jobwalker/singlewalk"
-	"github.com/fil-forge/indexing-service/pkg/internal/link"
-	"github.com/fil-forge/indexing-service/pkg/service/blobindexlookup"
-	"github.com/fil-forge/indexing-service/pkg/service/contentclaims"
-	"github.com/fil-forge/indexing-service/pkg/service/providerindex"
-	"github.com/fil-forge/indexing-service/pkg/service/queryresult"
-	"github.com/fil-forge/indexing-service/pkg/telemetry"
-	"github.com/fil-forge/indexing-service/pkg/types"
 )
 
 const (
@@ -96,8 +92,8 @@ var targetClaims = map[types.QueryType][]multicodec.Code{
 }
 
 type queryResult struct {
-	Claims  map[cid.Cid]delegation.Delegation
-	Indexes bytemap.ByteMap[types.EncodedContextID, blobindex.ShardedDagIndexView]
+	Claims  map[cid.Cid]ucan.Invocation
+	Indexes bytemap.ByteMap[types.EncodedContextID, blobindex.ShardedDagIndex]
 }
 
 type queryState struct {
@@ -172,7 +168,7 @@ func (is *IndexingService) jobHandler(mhCtx context.Context, j job, spawn func(j
 			}
 
 			s.AddEvent("fetching claims")
-			claim, err := is.claims.Find(mhCtx, cidlink.Link{Cid: claimCid}, url)
+			claim, err := is.claims.Find(mhCtx, claimCid, url)
 			if err != nil {
 				telemetry.Error(s, err, "fetching claims")
 				return fmt.Errorf("fetching claims: %w", err)
@@ -238,40 +234,63 @@ func (is *IndexingService) jobHandler(mhCtx context.Context, j job, spawn func(j
 					}
 
 					s.AddEvent("fetching index")
-					var auth *types.RetrievalAuth
-					match, err := assert.Location.Match(validator.NewSource(claim.Capabilities()[0], claim))
-					if err != nil {
+					var lcArgs assert.LocationArguments
+					if err := lcArgs.UnmarshalCBOR(bytes.NewReader(claim.ArgumentsBytes())); err != nil {
 						log.Warnw("failed to match claim to location commitment, will try next provider result if available", "err", err)
 						lastIndexFetchErr = fmt.Errorf("failed to match claim to location commitment: %w", err)
 						continue
 					}
-					lcCaveats := match.Value().Nb()
-					space := lcCaveats.Space
+
+					space := lcArgs.Space
 					dlgs := state.Access().q.Delegations
 					// Authorized retrieval requires a space in the location claim, a
 					// delegation for the retrieval, and an absolute byte range to extract.
-					if space != did.Undef && len(dlgs) > 0 && lcCaveats.Range != nil && lcCaveats.Range.Length != nil {
-						var proofs []delegation.Proof
-						for _, d := range dlgs {
-							for _, c := range d.Capabilities() {
-								if c.Can() == content.Retrieve.Can() && c.With() == space.String() {
-									proofs = append(proofs, delegation.FromDelegation(d))
-								}
-							}
-						}
-						if len(proofs) > 0 {
-							cap := content.Retrieve.New(space.String(), content.RetrieveCaveats{
-								Blob: content.BlobDigest{Digest: lcCaveats.Content.Hash()},
-								Range: content.Range{
-									Start: lcCaveats.Range.Offset,
-									End:   lcCaveats.Range.Offset + *lcCaveats.Range.Length - 1,
-								},
-							})
-							a := types.NewRetrievalAuth(is.id, claim.Issuer(), cap, proofs)
-							auth = &a
-						}
+					if lcArgs.Range == nil || lcArgs.Range.End == nil {
+						log.Warnw("missing range in location commitment, will try next provider result if available", "err", err)
+						lastIndexFetchErr = fmt.Errorf("missing range in location commitment for blob: %s", shard)
+						continue
 					}
-					req := types.NewRetrievalRequest(url, typedProtocol.Range, auth)
+
+					proofStore := ucanlib.NewContainerProofStore(container.New(container.WithDelegations(dlgs...)))
+					proofs, _, err := proofStore.ProofChain(mhCtx, is.id.DID(), content.Retrieve.Command, space)
+					if err != nil {
+						log.Warnw("failed to build proof chain, will try next provider result if available", "err", err)
+						lastIndexFetchErr = fmt.Errorf("failed to build proof chain: %w", err)
+						continue
+					}
+					// ProofChain returns (nil, nil) when no chain matches; the
+					// proofs[0].Subject() access below would otherwise panic.
+					// Skip this provider — a later result might supply a usable
+					// chain, or the loop will fall through with a useful error.
+					if len(proofs) == 0 {
+						log.Warnw("no /content/retrieve proof chain in query delegations, will try next provider result if available",
+							"audience", is.id.DID().String(),
+							"subject", space.String(),
+						)
+						lastIndexFetchErr = fmt.Errorf("no /content/retrieve proof chain for audience %s subject %s", is.id.DID(), space)
+						continue
+					}
+
+					contentRange := content.Range{
+						Start: lcArgs.Range.Start,
+						End:   *lcArgs.Range.End,
+					}
+					req := types.RetrievalRequest{
+						URL:   *url,
+						Range: &contentRange,
+						Auth: types.RetrievalAuth{
+							Issuer:   is.id,
+							Audience: claim.Issuer(),
+							Command:  content.Retrieve.Command,
+							Subject:  proofs[0].Subject(),
+							Arguments: &content.RetrieveArguments{
+								Blob:  content.Blob{Digest: lcArgs.Content},
+								Range: contentRange,
+							},
+							Proofs: proofs,
+						},
+					}
+
 					index, err := is.blobIndexLookup.Find(mhCtx, result.ContextID, *j.indexProviderRecord, req)
 					if err != nil {
 						telemetry.Error(s, err, "fetching index blob")
@@ -336,8 +355,8 @@ func (is *IndexingService) Query(ctx context.Context, q types.Query) (types.Quer
 	qs, err := is.jobWalker(ctx, initialJobs, queryState{
 		q: &q,
 		qr: &queryResult{
-			Claims:  make(map[cid.Cid]delegation.Delegation),
-			Indexes: bytemap.NewByteMap[types.EncodedContextID, blobindex.ShardedDagIndexView](-1),
+			Claims:  make(map[cid.Cid]ucan.Invocation),
+			Indexes: bytemap.NewByteMap[types.EncodedContextID, blobindex.ShardedDagIndex](-1),
 		},
 		visits: map[jobKey]struct{}{},
 	}, is.jobHandler)
@@ -379,12 +398,32 @@ func urlForResource(provider peer.AddrInfo, replacements []replacement) (*url.UR
 			url.Path = strings.ReplaceAll(url.Path, resourcePlaceholder, resourceID)
 		}
 		if replacedAny {
+			// maurl.ToURL produces a path without a leading slash because
+			// multiaddrs are path-segment based. URL.String() papers this
+			// over when rendering, but URL.RequestURI() (which
+			// http.Request.Write uses on the wire) reproduces the path
+			// verbatim — and an HTTP/1.1 request-target without a leading
+			// slash is malformed, causing Go's net/http server to reject
+			// it with a bare "400 Bad Request" before any handler runs.
+			// Normalize here.
+			if !strings.HasPrefix(url.Path, "/") {
+				url.Path = "/" + url.Path
+			}
 			return url, nil
 		}
 	}
-	placeholders := strings.Join(slices.Collect(iterable.Map(func(r replacement) string { return r.resourcePlaceholder }, slices.Values(replacements))), " or ")
-	addrs := strings.Join(slices.Collect(iterable.Map(func(a multiaddr.Multiaddr) string { return a.String() }, slices.Values(provider.Addrs))), ", ")
-	return nil, fmt.Errorf("no %s endpoint found in %d addresses: %s", placeholders, len(provider.Addrs), addrs)
+
+	placeholders := make([]string, 0, len(replacements))
+	for _, r := range replacements {
+		placeholders = append(placeholders, r.resourcePlaceholder)
+	}
+
+	addrs := make([]string, 0, len(provider.Addrs))
+	for _, addr := range provider.Addrs {
+		addrs = append(addrs, addr.String())
+	}
+
+	return nil, fmt.Errorf("no %s endpoint found in %d addresses: %s", strings.Join(placeholders, " or "), len(addrs), strings.Join(addrs, ", "))
 }
 
 func fetchClaimURL(provider peer.AddrInfo, claimCid cid.Cid) (*url.URL, error) {
@@ -395,7 +434,7 @@ func fetchRetrievalURL(provider peer.AddrInfo, shard cid.Cid) (*url.URL, error) 
 	return urlForResource(provider, []replacement{{blobUrlPlaceholder, digestutil.Format(shard.Hash())}, {blobCIDUrlPlaceholder, shard.String()}})
 }
 
-func (is *IndexingService) Get(ctx context.Context, claim ipld.Link) (delegation.Delegation, error) {
+func (is *IndexingService) Get(ctx context.Context, claim cid.Cid) (ucan.Invocation, error) {
 	return is.claims.Get(ctx, claim)
 }
 
@@ -404,8 +443,8 @@ func (is *IndexingService) Get(ctx context.Context, claim ipld.Link) (delegation
 // (a delegation for a location commitment is already generated on blob/accept)
 // ideally however, IPNI would enable UCAN chains for publishing so that we could publish it directly from the storage service
 // it doesn't for now, so we let SPs publish themselves them direct cache with us
-func (is *IndexingService) Cache(ctx context.Context, provider peer.AddrInfo, claim delegation.Delegation) error {
-	return Cache(ctx, is.blobIndexLookup, is.claims, is.providerIndex, provider, claim)
+func (is *IndexingService) Cache(ctx context.Context, provider peer.AddrInfo, claim ucan.Invocation, meta ucan.Container) error {
+	return Cache(ctx, is.blobIndexLookup, is.claims, is.providerIndex, provider, claim, meta)
 }
 
 // Publish caches and publishes a content claim
@@ -414,8 +453,8 @@ func (is *IndexingService) Cache(ctx context.Context, provider peer.AddrInfo, cl
 // For index claims, let's assume they fail if a location claim for the index car cid is not already published
 // The service should lookup the index cid location claim, and fetch the ShardedDagIndexView, then use the hashes inside
 // to assemble all the multihashes in the index advertisement
-func (is *IndexingService) Publish(ctx context.Context, claim delegation.Delegation) error {
-	return Publish(ctx, is.id, is.blobIndexLookup, is.claims, is.providerIndex, is.provider, claim)
+func (is *IndexingService) Publish(ctx context.Context, claim ucan.Invocation, meta ucan.Container) error {
+	return Publish(ctx, is.id, is.blobIndexLookup, is.claims, is.providerIndex, is.provider, claim, meta)
 }
 
 // Option configures an IndexingService
@@ -449,33 +488,27 @@ func NewIndexingService(id ucan.Signer, blobIndexLookup blobindexlookup.BlobInde
 	return is
 }
 
-func Cache(ctx context.Context, blobIndex blobindexlookup.BlobIndexLookup, claims contentclaims.Service, provIndex providerindex.ProviderIndex, provider peer.AddrInfo, claim delegation.Delegation) error {
+func Cache(ctx context.Context, blobIndex blobindexlookup.BlobIndexLookup, claims contentclaims.Service, provIndex providerindex.ProviderIndex, provider peer.AddrInfo, claim ucan.Invocation, meta ucan.Container) error {
 	ctx, s := telemetry.StartSpan(ctx, "IndexingService.Cache")
 	defer s.End()
 
-	caps := claim.Capabilities()
-	if len(caps) == 0 {
-		return fmt.Errorf("missing capabilities in claim: %s", claim.Link())
-	}
-
-	switch caps[0].Can() {
-	case assert.LocationAbility:
+	switch claim.Command() {
+	case assert.Location.Command:
 		s.SetAttributes(attribute.KeyValue{Key: "claim", Value: attribute.StringValue("assert/location")})
-		return cacheLocationCommitment(ctx, claims, provIndex, provider, claim)
+		return cacheLocationCommitment(ctx, claims, provIndex, provider, claim, meta)
 	default:
 		return ErrUnrecognizedClaim
 	}
 }
 
-func cacheLocationCommitment(ctx context.Context, claims contentclaims.Service, provIndex providerindex.ProviderIndex, provider peer.AddrInfo, claim delegation.Delegation) error {
-	capability := claim.Capabilities()[0]
-	if capability.Can() != assert.LocationAbility {
-		return fmt.Errorf("unsupported claim: %s", capability.Can())
+func cacheLocationCommitment(ctx context.Context, claims contentclaims.Service, provIndex providerindex.ProviderIndex, provider peer.AddrInfo, claim ucan.Invocation, _ ucan.Container) error {
+	if claim.Command() != assert.Location.Command {
+		return fmt.Errorf("invalid claim type: expected assert/location, got %s", claim.Command().String())
 	}
 
-	nb, rerr := assert.LocationCaveatsReader.Read(capability.Nb())
-	if rerr != nil {
-		return fmt.Errorf("reading index claim data: %w", rerr)
+	var args assert.LocationArguments
+	if err := args.UnmarshalCBOR(bytes.NewReader(claim.ArgumentsBytes())); err != nil {
+		return fmt.Errorf("unmarshaling location claim arguments: %w", err)
 	}
 
 	err := claims.Cache(ctx, claim)
@@ -483,32 +516,36 @@ func cacheLocationCommitment(ctx context.Context, claims contentclaims.Service, 
 		return fmt.Errorf("caching claim with claim service: %w", err)
 	}
 
-	digests := []multihash.Multihash{nb.Content.Hash()}
-	contextID, err := advertisement.EncodeContextID(nb.Space, nb.Content.Hash())
+	digests := []multihash.Multihash{args.Content}
+	contextID, err := advertisement.EncodeContextID(args.Space, args.Content)
 	if err != nil {
 		return fmt.Errorf("encoding advertisement context ID: %w", err)
 	}
 
-	var exp int
+	var exp ucan.UnixTimestamp
 	if claim.Expiration() != nil {
 		exp = *claim.Expiration()
 	}
 
 	var rng *metadata.Range
-	if nb.Range != nil {
-		rng = &metadata.Range{Offset: nb.Range.Offset, Length: nb.Range.Length}
+	if args.Range != nil {
+		rng = &metadata.Range{Offset: args.Range.Start}
+		if args.Range.End != nil {
+			length := *args.Range.End - args.Range.Start + 1
+			rng.Length = &length
+		}
 	}
 
-	shardCid, err := advertisement.ShardCID(provider, nb)
+	shardCid, err := advertisement.ShardCID(provider, args)
 	if err != nil {
-		return fmt.Errorf("failed to extract shard CID for provider: %s locationCommitment %s: %w", provider, capability, err)
+		return fmt.Errorf("failed to extract shard CID for provider: %s locationCommitment %v: %w", provider, args, err)
 	}
 
 	meta := metadata.MetadataContext.New(
 		&metadata.LocationCommitmentMetadata{
 			Shard:      shardCid,
 			Expiration: int64(exp),
-			Claim:      link.ToCID(claim.Link()),
+			Claim:      claim.Link(),
 			Range:      rng,
 		},
 	)
@@ -521,31 +558,26 @@ func cacheLocationCommitment(ctx context.Context, claims contentclaims.Service, 
 	return nil
 }
 
-func Publish(ctx context.Context, id ucan.Signer, blobIndex blobindexlookup.BlobIndexLookup, claims contentclaims.Service, provIndex providerindex.ProviderIndex, provider peer.AddrInfo, claim delegation.Delegation) error {
+func Publish(ctx context.Context, id ucan.Signer, blobIndex blobindexlookup.BlobIndexLookup, claims contentclaims.Service, provIndex providerindex.ProviderIndex, provider peer.AddrInfo, claim ucan.Invocation, meta ucan.Container) error {
 	ctx, s := telemetry.StartSpan(ctx, "IndexingService.Publish")
 	defer s.End()
 
-	caps := claim.Capabilities()
-	if len(caps) == 0 {
-		return fmt.Errorf("missing capabilities in claim: %s", claim.Link())
-	}
-	switch caps[0].Can() {
-	case assert.EqualsAbility:
-		s.SetAttributes(attribute.KeyValue{Key: "claim", Value: attribute.StringValue("assert/equals")})
-		return publishEqualsClaim(ctx, claims, provIndex, provider, claim)
-	case assert.IndexAbility:
-		s.SetAttributes(attribute.KeyValue{Key: "claim", Value: attribute.StringValue("assert/index")})
-		return publishIndexClaim(ctx, id, blobIndex, claims, provIndex, provider, claim)
+	switch claim.Command() {
+	case assert.Equals.Command:
+		s.SetAttributes(attribute.KeyValue{Key: "claim", Value: attribute.StringValue(assert.Equals.String())})
+		return publishEqualsClaim(ctx, claims, provIndex, provider, claim, meta)
+	case assert.Index.Command:
+		s.SetAttributes(attribute.KeyValue{Key: "claim", Value: attribute.StringValue(assert.Index.String())})
+		return publishIndexClaim(ctx, id, blobIndex, claims, provIndex, provider, claim, meta)
 	default:
 		return ErrUnrecognizedClaim
 	}
 }
 
-func publishEqualsClaim(ctx context.Context, claims contentclaims.Service, provIndex providerindex.ProviderIndex, provider peer.AddrInfo, claim delegation.Delegation) error {
-	capability := claim.Capabilities()[0]
-	nb, rerr := assert.EqualsCaveatsReader.Read(capability.Nb())
-	if rerr != nil {
-		return fmt.Errorf("reading equals claim data: %w", rerr)
+func publishEqualsClaim(ctx context.Context, claims contentclaims.Service, provIndex providerindex.ProviderIndex, provider peer.AddrInfo, claim ucan.Invocation, _ ucan.Container) error {
+	var args assert.EqualsArguments
+	if err := args.UnmarshalCBOR(bytes.NewReader(claim.ArgumentsBytes())); err != nil {
+		return fmt.Errorf("unmarshaling equals claim arguments: %w", err)
 	}
 
 	err := claims.Publish(ctx, claim)
@@ -553,23 +585,23 @@ func publishEqualsClaim(ctx context.Context, claims contentclaims.Service, provI
 		return fmt.Errorf("caching equals claim with claim service: %w", err)
 	}
 
-	var exp int
+	var exp ucan.UnixTimestamp
 	if claim.Expiration() != nil {
 		exp = *claim.Expiration()
 	}
 
 	meta := metadata.MetadataContext.New(
 		&metadata.EqualsClaimMetadata{
-			Equals:     link.ToCID(nb.Equals),
+			Equals:     args.Equals,
 			Expiration: int64(exp),
-			Claim:      link.ToCID(claim.Link()),
+			Claim:      claim.Link(),
 		},
 	)
 
 	var digests []multihash.Multihash
-	digests = append(digests, nb.Content.Hash())
-	digests = append(digests, nb.Equals.(cidlink.Link).Cid.Hash())
-	contextID := string(nb.Content.Hash())
+	digests = append(digests, args.Content)
+	digests = append(digests, args.Equals.Hash())
+	contextID := string(args.Content)
 	err = provIndex.Publish(ctx, provider, contextID, slices.Values(digests), meta)
 	if err != nil {
 		return fmt.Errorf("publishing equals claim: %w", err)
@@ -578,11 +610,10 @@ func publishEqualsClaim(ctx context.Context, claims contentclaims.Service, provI
 	return nil
 }
 
-func publishIndexClaim(ctx context.Context, id ucan.Signer, blobIndex blobindexlookup.BlobIndexLookup, claims contentclaims.Service, provIndex providerindex.ProviderIndex, provider peer.AddrInfo, claim delegation.Delegation) error {
-	capability := claim.Capabilities()[0]
-	nb, rerr := assert.IndexCaveatsReader.Read(capability.Nb())
-	if rerr != nil {
-		return fmt.Errorf("reading index claim data: %w", rerr)
+func publishIndexClaim(ctx context.Context, id ucan.Signer, blobIndex blobindexlookup.BlobIndexLookup, claims contentclaims.Service, provIndex providerindex.ProviderIndex, provider peer.AddrInfo, claim ucan.Invocation, claimMeta ucan.Container) error {
+	var args assert.IndexArguments
+	if err := args.UnmarshalCBOR(bytes.NewReader(claim.ArgumentsBytes())); err != nil {
+		return fmt.Errorf("unmarshaling index claim arguments: %w", err)
 	}
 
 	err := claims.Publish(ctx, claim)
@@ -591,20 +622,20 @@ func publishIndexClaim(ctx context.Context, id ucan.Signer, blobIndex blobindexl
 	}
 
 	results, err := provIndex.Find(ctx, providerindex.QueryKey{
-		Hash:         link.ToCID(nb.Index).Hash(),
+		Hash:         args.Index.Hash(),
 		TargetClaims: []multicodec.Code{metadata.LocationCommitmentID},
 	})
 	if err != nil {
 		return fmt.Errorf("finding location commitment: %w", err)
 	}
 	if len(results) == 0 {
-		return fmt.Errorf("no location commitments found for index: %s", nb.Index)
+		return fmt.Errorf("no location commitments found for index: %s", args.Index)
 	}
 
 	var idx blobindex.ShardedDagIndex
 	var ferr error
 	for _, r := range results {
-		idx, ferr = fetchBlobIndex(ctx, id, blobIndex, claims, nb.Index, r, claim)
+		idx, ferr = fetchBlobIndex(ctx, id, blobIndex, claims, args.Index, r, claim, claimMeta)
 		if ferr != nil {
 			continue
 		}
@@ -614,16 +645,16 @@ func publishIndexClaim(ctx context.Context, id ucan.Signer, blobIndex blobindexl
 		return fmt.Errorf("fetching blob index: %w", ferr)
 	}
 
-	var exp int
+	var exp ucan.UnixTimestamp
 	if claim.Expiration() != nil {
 		exp = *claim.Expiration()
 	}
 
 	meta := metadata.MetadataContext.New(
 		&metadata.IndexClaimMetadata{
-			Index:      link.ToCID(nb.Index),
+			Index:      args.Index,
 			Expiration: int64(exp),
-			Claim:      link.ToCID(claim.Link()),
+			Claim:      claim.Link(),
 		},
 	)
 
@@ -634,8 +665,8 @@ func publishIndexClaim(ctx context.Context, id ucan.Signer, blobIndex blobindexl
 		}
 	}
 
-	contextID := nb.Index.Binary()
-	err = provIndex.Publish(ctx, provider, contextID, digests.Keys(), meta)
+	contextID := args.Index.Bytes()
+	err = provIndex.Publish(ctx, provider, string(contextID), digests.Keys(), meta)
 	if err != nil {
 		return fmt.Errorf("publishing index claim: %w", err)
 	}
@@ -648,9 +679,10 @@ func fetchBlobIndex(
 	id ucan.Signer,
 	blobIndex blobindexlookup.BlobIndexLookup,
 	claims contentclaims.Service,
-	blobLink ipld.Link,
+	blobLink cid.Cid,
 	result model.ProviderResult,
-	cause invocation.Invocation, // supporting context (typically `assert/index`)
+	cause ucan.Invocation, // supporting context (typically `/assert/index`)
+	causeMeta ucan.Container,
 ) (blobindex.ShardedDagIndex, error) {
 	meta := metadata.MetadataContext.New()
 	err := meta.UnmarshalBinary(result.Metadata)
@@ -665,10 +697,10 @@ func fetchBlobIndex(
 	}
 
 	if lcmeta.Shard != nil {
-		blobLink = cidlink.Link{Cid: *lcmeta.Shard}
+		blobLink = *lcmeta.Shard
 	}
 
-	blobURL, err := fetchRetrievalURL(*result.Provider, link.ToCID(blobLink))
+	blobURL, err := fetchRetrievalURL(*result.Provider, blobLink)
 	if err != nil {
 		return nil, fmt.Errorf("building retrieval URL: %w", err)
 	}
@@ -690,40 +722,49 @@ func fetchBlobIndex(
 			return
 		}
 
-		dlg, err := claims.Find(ctx, cidlink.Link{Cid: lcmeta.Claim}, claimURL)
+		claim, err := claims.Find(ctx, lcmeta.Claim, claimURL)
 		if err != nil {
 			validateErr = err
 			return
 		}
 
-		_, err = validateLocationCommitment(ctx, dlg)
+		err = validateLocationCommitment(ctx, claim)
 		if err != nil {
 			validateErr = err
 			return
 		}
 	}()
 
-	// Try to extract a space/content/retrieve delegation from the assert/index
-	// invocation. If this fails then fallback to trying to request without auth.
-	// Note: it'll fail for non-UCAN authorized retrieval nodes (legacy).
-	cap, dlg, err := extractContentRetrieveDelegation(cause)
+	// Try to extract a /content/retrieve delegation from the /assert/index
+	// invocation.
+	proofs, err := extractContentRetrieveDelegation(ctx, id.DID(), cause, causeMeta)
 	if err != nil {
-		log.Warnw("extracting space/content/retrieve delegation", "err", err)
+		return nil, err
 	}
 
 	byteRange := lcmeta.Range
-	var auth *types.RetrievalAuth
-	if dlg != nil {
-		cap := content.Retrieve.New(cap.With(), cap.Nb())
-		prfs := []delegation.Proof{delegation.FromDelegation(dlg)}
-		a := types.NewRetrievalAuth(id, aud, cap, prfs)
-		offset := cap.Nb().Range.Start
-		length := cap.Nb().Range.End - cap.Nb().Range.Start + 1
-		byteRange = &metadata.Range{Offset: offset, Length: &length}
-		auth = &a
+	if byteRange == nil || byteRange.Length == nil {
+		return nil, fmt.Errorf("missing byte range in location commitment metadata for index: %s", blobLink)
 	}
-
-	req := types.NewRetrievalRequest(blobURL, byteRange, auth)
+	contentRange := content.Range{
+		Start: byteRange.Offset,
+		End:   byteRange.Offset + *byteRange.Length - 1,
+	}
+	req := types.RetrievalRequest{
+		URL:   *blobURL,
+		Range: &contentRange,
+		Auth: types.RetrievalAuth{
+			Issuer:   id,
+			Audience: aud.DID(),
+			Command:  content.Retrieve.Command,
+			Subject:  proofs[0].Subject(),
+			Arguments: &content.RetrieveArguments{
+				Blob:  content.Blob{Digest: blobLink.Hash()},
+				Range: contentRange,
+			},
+			Proofs: proofs,
+		},
+	}
 	// Note: the ContextID here is of a location commitment provider
 	idx, err := blobIndex.Find(ctx, result.ContextID, result, req)
 	if err != nil {
@@ -738,40 +779,18 @@ func fetchBlobIndex(
 	return idx, nil
 }
 
-// validateLocationCommitment ensures that the delegation is a valid UCAN (signed,
+// validateLocationCommitment ensures that the claim is a valid UCAN (signed,
 // not expired etc.) and is a location commitment.
-func validateLocationCommitment(ctx context.Context, claim delegation.Delegation) (validator.Authorization[assert.LocationCaveats], error) {
-	// We use the delegation issuer as the authority, since this should be a self
-	// issued UCAN to assert location.
-	// TODO: support verifiers for other key types?
-	vfr, err := verifier.Parse(claim.Issuer().DID().String())
-	if err != nil {
-		return nil, fmt.Errorf("parsing claim issuer DID: %w", err)
+func validateLocationCommitment(ctx context.Context, claim ucan.Invocation) error {
+	if claim.Command() != assert.Location.Command {
+		return fmt.Errorf("unexpected command: %s", claim.Command())
 	}
-
-	vctx := validator.NewValidationContext(
-		vfr,
-		assert.Location,
-		validator.IsSelfIssued,
-		// TODO: plug in revocation service?
-		func(ctx context.Context, auth validator.Authorization[any]) validator.Revoked { return nil },
-		validator.ProofUnavailable,     // probably don't want to resolve proofs...
-		verifier.Parse,                 // TODO: support verifiers for other key types?
-		validator.FailDIDKeyResolution, // probably don't want to resolve DID methods either
-		validator.NotExpiredNotTooEarly,
-	)
-
-	auth, err := validator.Access(ctx, claim, vctx)
-	if err != nil {
-		return nil, fmt.Errorf("validating access: %w", err)
-	}
-
-	return auth, nil
+	return validator.ValidateInvocation(ctx, claim)
 }
 
 // peerToPrincipal converts a peer ID into a UCAN principal object. Currently
 // supports only ed25519 keys.
-func peerToPrincipal(peer peer.ID) (ucan.Principal, error) {
+func peerToPrincipal(peer peer.ID) (principal.Verifier, error) {
 	pk, err := peer.ExtractPublicKey()
 	if err != nil {
 		return nil, fmt.Errorf("extracting public key from peer ID: %w", err)
@@ -780,49 +799,49 @@ func peerToPrincipal(peer peer.ID) (ucan.Principal, error) {
 	if err != nil {
 		return nil, fmt.Errorf("extracting raw bytes of public key: %w", err)
 	}
-	v, err := verifier.FromRaw(pubBytes)
+	v, err := ed25519_verifier.FromRaw(pubBytes)
 	if err != nil {
 		return nil, fmt.Errorf("decoding raw ed25519 public key: %w", err)
 	}
 	return v, nil
 }
 
-// extractContentRetrieveDelegation extracts a `space/content/retrieve`
-// delegation attached to the passed invocation (typically an `assert/index`).
-// The delegation is expected to be linked from facts by a "retrievalAuth" key.
-func extractContentRetrieveDelegation(assertion invocation.Invocation) (ucan.Capability[content.RetrieveCaveats], delegation.Delegation, error) {
-	var root ipld.Link
-	for _, f := range assertion.Facts() {
-		authValue, ok := f["retrievalAuth"]
-		if !ok {
-			continue
-		}
-		node, ok := authValue.(ipld.Node)
-		if !ok {
-			break
-		}
-		l, err := node.AsLink()
-		if err != nil {
-			log.Warnf("auth value is not an IPLD link")
-			break
-		}
-		root = l
-		break
+// extractContentRetrieveDelegation extracts a `/content/retrieve`
+// delegation attached to the passed invocation (typically an `/assert/index`).
+// The delegations are expected to be linked from metadata by a "retrievalAuth"
+// key.
+func extractContentRetrieveDelegation(ctx context.Context, audience did.DID, assertion ucan.Invocation, assertionMeta ucan.Container) ([]ucan.Delegation, error) {
+	var meta assert.IndexMetadata
+	if err := meta.UnmarshalCBOR(bytes.NewReader(assertion.MetadataBytes())); err != nil {
+		return nil, fmt.Errorf("unmarshaling assertion metadata: %w", err)
 	}
-	if root == nil {
-		return nil, nil, errors.New("retrieval authorization delegation link not found in facts")
+
+	if len(meta.RetrievalAuth) == 0 {
+		return nil, fmt.Errorf("missing content retrieval authorization")
 	}
-	bs, err := blockstore.NewBlockReader(blockstore.WithBlocksIterator(assertion.Blocks()))
+
+	dlgs := map[cid.Cid]ucan.Delegation{}
+	for _, d := range assertionMeta.Delegations() {
+		dlgs[d.Link()] = d
+	}
+
+	rootDelegation, ok := dlgs[meta.RetrievalAuth[0]]
+	if !ok {
+		return nil, fmt.Errorf("root retrieval auth delegation not found in index assertion metadata delegations: %s", meta.RetrievalAuth[0])
+	}
+
+	proofStore := ucanlib.NewContainerProofStore(assertionMeta)
+	proofs, _, err := proofStore.ProofChain(ctx, audience, content.Retrieve.Command, rootDelegation.Subject())
 	if err != nil {
-		return nil, nil, err
+		return nil, fmt.Errorf("building proof chain: %w", err)
 	}
-	dlg, err := delegation.NewDelegationView(root, bs)
-	if err != nil {
-		return nil, nil, fmt.Errorf("creating retrieval authorization delegation: %w", err)
+
+	// ProofChain yields zero delegations (with no error) when no chain
+	// matches; downstream callers index proofs[0] unconditionally, so guard
+	// here to return an error instead of letting them panic.
+	if len(proofs) == 0 {
+		return nil, fmt.Errorf("no /content/retrieve proof chain found for audience %s subject %s (root retrieval auth: %s)", audience, rootDelegation.Subject(), meta.RetrievalAuth[0])
 	}
-	match, err := content.Retrieve.Match(validator.NewSource(dlg.Capabilities()[0], dlg))
-	if err != nil {
-		return nil, nil, fmt.Errorf("matching %s delegation: %w", content.RetrieveAbility, err)
-	}
-	return match.Value(), dlg, nil
+
+	return proofs, nil
 }

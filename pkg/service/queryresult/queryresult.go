@@ -1,68 +1,53 @@
+//go:build !codegen
+
 package queryresult
 
 import (
+	"bytes"
 	"fmt"
 	"io"
-	"iter"
+	"maps"
+	"slices"
 
-	"github.com/fil-forge/go-libstoracha/blobindex"
-	"github.com/fil-forge/go-libstoracha/bytemap"
-	"github.com/fil-forge/go-libstoracha/capabilities/assert"
-	ctypes "github.com/fil-forge/go-libstoracha/capabilities/types"
-	"github.com/fil-forge/go-ucanto/core/car"
-	"github.com/fil-forge/go-ucanto/core/dag/blockstore"
-	"github.com/fil-forge/go-ucanto/core/delegation"
-	"github.com/fil-forge/go-ucanto/core/ipld"
-	"github.com/fil-forge/go-ucanto/core/ipld/block"
-	"github.com/fil-forge/go-ucanto/core/ipld/codec/cbor"
-	"github.com/fil-forge/go-ucanto/core/ipld/hash/sha256"
-	"github.com/fil-forge/go-ucanto/ucan"
-	"github.com/fil-forge/go-ucanto/validator"
-	qdm "github.com/fil-forge/indexing-service/pkg/service/queryresult/datamodel"
+	"github.com/fil-forge/automobile"
 	"github.com/fil-forge/indexing-service/pkg/types"
+	"github.com/fil-forge/libforge/blobindex"
+	"github.com/fil-forge/libforge/bytemap"
+	"github.com/fil-forge/libforge/commands/assert"
+	"github.com/fil-forge/ucantone/ucan"
+	"github.com/fil-forge/ucantone/ucan/invocation"
 	"github.com/ipfs/go-cid"
-	"github.com/ipld/go-ipld-prime/datamodel"
-	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	"github.com/multiformats/go-multicodec"
 	mh "github.com/multiformats/go-multihash"
 	multihash "github.com/multiformats/go-multihash/core"
 )
 
 type queryResult struct {
-	root ipld.Block
-	data *qdm.QueryResultModel0_1
-	blks blockstore.BlockReader
+	root  types.Block
+	model *QueryResult0_1
+	blks  []types.Block
 }
 
 var _ types.QueryResult = (*queryResult)(nil)
 
-func (q *queryResult) Blocks() iter.Seq2[block.Block, error] {
-	return q.blks.Iterator()
+func (q *queryResult) Blocks() []types.Block {
+	return q.blks
 }
 
-func (q *queryResult) Claims() []datamodel.Link {
-	return q.data.Claims
+func (q *queryResult) Claims() []cid.Cid {
+	return q.model.Claims
 }
 
-func (q *queryResult) Indexes() []datamodel.Link {
-	var indexes []ipld.Link
-	if q.data.Indexes != nil {
-		for _, k := range q.data.Indexes.Keys {
-			l, ok := q.data.Indexes.Values[k]
-			if ok {
-				indexes = append(indexes, l)
-			}
-		}
-	}
-	return indexes
+func (q *queryResult) Indexes() []cid.Cid {
+	return slices.Collect(maps.Values(q.model.Indexes))
 }
 
-func (q *queryResult) Root() block.Block {
+func (q *queryResult) Root() types.Block {
 	return q.root
 }
 
 func Extract(r io.Reader) (types.QueryResult, error) {
-	roots, blocks, err := car.Decode(r)
+	roots, carBlocks, err := automobile.Decode(r)
 	if err != nil {
 		return nil, fmt.Errorf("extracting car: %w", err)
 	}
@@ -71,106 +56,88 @@ func Extract(r io.Reader) (types.QueryResult, error) {
 		return nil, types.ErrWrongRootCount
 	}
 
-	blks, err := blockstore.NewBlockReader(blockstore.WithBlocksIterator(blocks))
-	if err != nil {
-		return nil, fmt.Errorf("reading blocks from car: %w", err)
+	var rootBlock *types.Block
+	blocks := make([]types.Block, len(carBlocks))
+	for i, blk := range carBlocks {
+		blocks[i] = types.Block(blk)
+		if blk.Link == roots[0] {
+			b := types.Block(blk)
+			rootBlock = &b
+		}
 	}
-	root, has, err := blks.Get(roots[0])
-	if err != nil {
-		return nil, fmt.Errorf("reading root block: %w", err)
-	}
-	if !has {
+	if rootBlock == nil {
 		return nil, types.ErrNoRootBlock
 	}
 
-	var queryResultModel qdm.QueryResultModel
-	err = block.Decode(root, &queryResultModel, qdm.QueryResultType(), cbor.Codec, sha256.Hasher)
-	if err != nil {
+	var queryResultModel QueryResult
+	if err := queryResultModel.UnmarshalCBOR(bytes.NewReader(rootBlock.Data)); err != nil {
 		return nil, fmt.Errorf("decoding query result: %w", err)
 	}
-	return &queryResult{root, queryResultModel.Result0_1, blks}, nil
+	return &queryResult{root: *rootBlock, model: queryResultModel.Result0_1, blks: blocks}, nil
 }
 
 // Build generates a new encodable QueryResult
-func Build(claims map[cid.Cid]delegation.Delegation, indexes bytemap.ByteMap[types.EncodedContextID, blobindex.ShardedDagIndexView]) (types.QueryResult, error) {
-	bs, err := blockstore.NewBlockStore()
-	if err != nil {
-		return nil, err
-	}
+func Build(claims map[cid.Cid]ucan.Invocation, indexes bytemap.ByteMap[types.EncodedContextID, blobindex.ShardedDagIndex]) (types.QueryResult, error) {
+	blocks := make([]types.Block, 0, len(claims)+indexes.Size()+1)
 
-	cls := []ipld.Link{}
+	cls := []cid.Cid{}
 	for _, claim := range claims {
 		cls = append(cls, claim.Link())
-
-		err := blockstore.WriteInto(claim, bs)
-		if err != nil {
-			return nil, err
-		}
+		blocks = append(blocks, types.Block{
+			Link: claim.Link(),
+			Data: claim.Bytes(),
+		})
 	}
 
-	var indexesModel *qdm.IndexesModel
+	indexesModel := map[string]cid.Cid{}
 	if indexes.Size() > 0 {
-		indexesModel = &qdm.IndexesModel{
-			Keys:   make([]string, 0, indexes.Size()),
-			Values: make(map[string]ipld.Link, indexes.Size()),
-		}
 		for contextID, index := range indexes.Iterator() {
-			reader, err := index.Archive()
-			if err != nil {
-				return nil, err
+			var buf bytes.Buffer
+			if err := blobindex.Archive(index, &buf); err != nil {
+				return nil, fmt.Errorf("archiving index: %w", err)
 			}
-			bytes, err := io.ReadAll(reader)
-			if err != nil {
-				return nil, err
-			}
-			indexCid, err := cid.Prefix{
+			indexLink, err := cid.Prefix{
 				Version:  1,
 				Codec:    uint64(multicodec.Car),
 				MhType:   multihash.SHA2_256,
 				MhLength: -1,
-			}.Sum(bytes)
+			}.Sum(buf.Bytes())
 			if err != nil {
 				return nil, err
 			}
-
-			lnk := cidlink.Link{Cid: indexCid}
-			err = bs.Put(block.NewBlock(lnk, bytes))
-			if err != nil {
-				return nil, err
-			}
-			indexesModel.Keys = append(indexesModel.Keys, string(contextID))
-			indexesModel.Values[string(contextID)] = lnk
+			indexesModel[string(contextID)] = indexLink
+			blocks = append(blocks, types.Block{Link: indexLink, Data: buf.Bytes()})
 		}
 	}
 
-	queryResultModel := qdm.QueryResultModel{
-		Result0_1: &qdm.QueryResultModel0_1{
+	queryResultModel := QueryResult{
+		Result0_1: &QueryResult0_1{
 			Claims:  cls,
 			Indexes: indexesModel,
 		},
 	}
 
-	rt, err := block.Encode(
-		&queryResultModel,
-		qdm.QueryResultType(),
-		cbor.Codec,
-		sha256.Hasher,
-	)
-	if err != nil {
-		return nil, err
+	var rootBuf bytes.Buffer
+	if err := queryResultModel.MarshalCBOR(&rootBuf); err != nil {
+		return nil, fmt.Errorf("encoding query result: %w", err)
 	}
-
-	err = bs.Put(rt)
+	rootLink, err := cid.V1Builder{
+		Codec:    cid.DagCBOR,
+		MhType:   multihash.SHA2_256,
+		MhLength: -1,
+	}.Sum(rootBuf.Bytes())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("building root CID: %w", err)
 	}
+	rootBlock := types.Block{Link: rootLink, Data: rootBuf.Bytes()}
+	blocks = append(blocks, rootBlock)
 
-	return &queryResult{root: rt, data: queryResultModel.Result0_1, blks: bs}, nil
+	return &queryResult{root: rootBlock, model: queryResultModel.Result0_1, blks: blocks}, nil
 }
 
 // BuildCompressed returns a QueryResult that, when there is a matching index entry for the
 // targetMh, replaces the full index with a single location claim for the targetMh
-func BuildCompressed(targetMh mh.Multihash, principal ucan.Signer, claims map[cid.Cid]delegation.Delegation, indexes bytemap.ByteMap[types.EncodedContextID, blobindex.ShardedDagIndexView]) (types.QueryResult, error) {
+func BuildCompressed(targetMh mh.Multihash, principal ucan.Signer, claims map[cid.Cid]ucan.Invocation, indexes bytemap.ByteMap[types.EncodedContextID, blobindex.ShardedDagIndex]) (types.QueryResult, error) {
 
 	// our goal here is to remove indexes from the query result if there are any
 	// if there are no indexes, we can just build the regular query result
@@ -183,56 +150,59 @@ func BuildCompressed(targetMh mh.Multihash, principal ucan.Signer, claims map[ci
 			if shard.Has(targetMh) {
 				pos := shard.Get(targetMh)
 				hasLocation := false
-				var locClaim assert.LocationCaveats
-				var expiration *ucan.UTCUnixTimestamp
+				var locClaim assert.LocationArguments
+				var expiration *ucan.UnixTimestamp
 				for _, claim := range claims {
-					match, err := assert.Location.Match(validator.NewSource(claim.Capabilities()[0], claim))
-					if err != nil {
+					if claim.Command() != assert.Location.Command {
 						continue
 					}
-					if match.Value().Nb().Content.Hash().B58String() != shardHash.B58String() {
+					if err := locClaim.UnmarshalCBOR(bytes.NewReader(claim.ArgumentsBytes())); err != nil {
 						continue
 					}
-
+					if !bytes.Equal(locClaim.Content, shardHash) {
+						continue
+					}
 					hasLocation = true
-
-					locClaim = match.Value().Nb()
 					expiration = claim.Expiration()
+					break
 				}
 				if !hasLocation {
 					continue
 				}
 
-				length := pos.Length
-				offset := pos.Offset
+				start := uint64(pos.Start)
+				end := uint64(pos.End)
 				if locClaim.Range != nil {
-					offset = locClaim.Range.Offset + pos.Offset
+					start = locClaim.Range.Start + uint64(pos.Start)
+					if locClaim.Range.End != nil {
+						end = locClaim.Range.Start + uint64(pos.End)
+					}
 				}
-				newCaveats := assert.LocationCaveats{
-					Content:  ctypes.FromHash(targetMh),
+				newArgs := assert.LocationArguments{
+					Content:  targetMh,
 					Location: locClaim.Location,
-					Range:    &assert.Range{Offset: offset, Length: &length},
+					Range:    &assert.Range{Start: start, End: &end},
 					Space:    locClaim.Space,
 				}
-				var opts = []delegation.Option{}
+				var opts = []invocation.Option{
+					invocation.WithAudience(principal.DID()),
+				}
 				if expiration != nil {
-					opts = append(opts, delegation.WithExpiration(*expiration))
+					opts = append(opts, invocation.WithExpiration(*expiration))
 				}
 
-				claim, err := assert.Location.Delegate(
+				claim, err := assert.Location.Invoke(
 					principal,
-					principal,
-					principal.DID().String(),
-					newCaveats,
+					principal.DID(),
+					&newArgs,
 					opts...,
 				)
 				if err != nil {
 					return nil, fmt.Errorf("delegating compressed location claim: %w", err)
 				}
 
-				newClaims := make(map[cid.Cid]delegation.Delegation)
-				newClaims[claim.Link().(cidlink.Link).Cid] = claim
-				return Build(newClaims, bytemap.NewByteMap[types.EncodedContextID, blobindex.ShardedDagIndexView](-1))
+				newClaims := map[cid.Cid]ucan.Invocation{claim.Link(): claim}
+				return Build(newClaims, bytemap.NewByteMap[types.EncodedContextID, blobindex.ShardedDagIndex](-1))
 			}
 		}
 	}

@@ -4,9 +4,9 @@ import (
 	"context"
 	"net/url"
 
-	"github.com/fil-forge/go-ucanto/core/delegation"
-	"github.com/ipld/go-ipld-prime"
-	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
+	"github.com/fil-forge/ucantone/ucan"
+	"github.com/fil-forge/ucantone/ucan/invocation"
+	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
 )
 
@@ -14,7 +14,7 @@ type identityCidFinder struct {
 	finder Finder
 }
 
-var _ Finder = (*cachingFinder)(nil)
+var _ Finder = (*identityCidFinder)(nil)
 
 // WithIdentityCids augments a ClaimFinder with claims retrieved automatically whenever an identity CID is used
 func WithIdentityCids(finder Finder) Finder {
@@ -22,16 +22,13 @@ func WithIdentityCids(finder Finder) Finder {
 }
 
 // Find attempts to fetch a claim from either the permenant storage or via the provided URL
-func (idf *identityCidFinder) Find(ctx context.Context, id ipld.Link, fetchURL *url.URL) (delegation.Delegation, error) {
-
-	if cidLink, ok := id.(cidlink.Link); ok {
-		if cidLink.Cid.Prefix().MhType == multihash.IDENTITY {
-			dh, err := multihash.Decode(cidLink.Cid.Hash())
-			if err != nil {
-				return nil, err
-			}
-			return delegation.Extract(dh.Digest)
+func (idf *identityCidFinder) Find(ctx context.Context, id cid.Cid, fetchURL *url.URL) (ucan.Invocation, error) {
+	if id.Prefix().MhType == multihash.IDENTITY {
+		dh, err := multihash.Decode(id.Hash())
+		if err != nil {
+			return nil, err
 		}
+		return invocation.Decode(dh.Digest)
 	}
 
 	// attempt to fetch the claim from the underlying claim finder

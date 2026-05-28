@@ -3,45 +3,38 @@ package contentclaims_test
 import (
 	"context"
 	"errors"
-	"io"
 	"testing"
 
-	"github.com/fil-forge/go-libstoracha/testutil"
-	"github.com/fil-forge/go-ucanto/core/delegation"
-	"github.com/fil-forge/go-ucanto/core/ipld"
+	"github.com/fil-forge/indexing-service/pkg/internal/testutil"
 	"github.com/fil-forge/indexing-service/pkg/service/contentclaims"
+	"github.com/fil-forge/ucantone/ucan"
 	"github.com/ipfs/go-cid"
-	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	multihash "github.com/multiformats/go-multihash/core"
 	"github.com/stretchr/testify/require"
 )
 
 func TestIdentityCidFinder__Find(t *testing.T) {
-	// Create a cached claim
-	identityCidClaim := testutil.RandomLocationDelegation(t)
-	notIdentityCidClaim := testutil.RandomIndexDelegation(t)
+	identityCidClaim := testutil.RandomLocationCommitment(t)
+	notIdentityCidClaim := testutil.RandomIndexClaim(t)
 
-	identityCiddata := testutil.Must(io.ReadAll(identityCidClaim.Archive()))(t)
+	identityCiddata := identityCidClaim.Bytes()
 
-	// Create a test CID
-	identityCid := cidlink.Link{Cid: testutil.Must(cid.Prefix{
+	identityCid := testutil.Must(cid.Prefix{
 		Version:  1,
 		Codec:    cid.Raw,
 		MhType:   multihash.IDENTITY,
 		MhLength: len(identityCiddata),
-	}.Sum(identityCiddata))(t)}
+	}.Sum(identityCiddata))(t)
 	notIdentityCid := notIdentityCidClaim.Link()
 
-	// sample error
 	anError := errors.New("something went wrong")
-	// Define test cases
 	testCases := []struct {
 		name          string
-		claimCid      ipld.Link
+		claimCid      cid.Cid
 		getErr        error
 		expectedErr   error
 		baseFinder    *mockFinder
-		expectedClaim delegation.Delegation
+		expectedClaim ucan.Invocation
 	}{
 		{
 			name:          "identity cid",
@@ -62,16 +55,12 @@ func TestIdentityCidFinder__Find(t *testing.T) {
 		},
 	}
 
-	// Run test cases
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-
-			// generate a test server for requests
 			finder := tc.baseFinder
 			if finder == nil {
 				finder = &mockFinder{notIdentityCidClaim, nil}
 			}
-			// Create ClaimLookup instance
 			cl := contentclaims.WithIdentityCids(finder)
 
 			claim, err := cl.Find(context.Background(), tc.claimCid, testutil.TestURL)
@@ -80,7 +69,7 @@ func TestIdentityCidFinder__Find(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 			}
-			testutil.RequireEqualDelegation(t, tc.expectedClaim, claim)
+			testutil.RequireEqualClaim(t, tc.expectedClaim, claim)
 		})
 	}
 }

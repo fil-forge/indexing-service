@@ -89,7 +89,7 @@ func handleMessage(ctx context.Context, sqsCachingDecoder *aws.SQSCachingDecoder
 	// Do not hold up the queue by re-attempting a cache job that times out. It is
 	// probably a big DAG and retrying is unlikely to subsequently succeed.
 	if errors.Is(err, context.DeadlineExceeded) {
-		log.Warnf("not retrying cache provider job for: %s error: %s", job.Job.Index.Content(), err)
+		log.Warnf("not retrying cache provider job: %s", err)
 		return nil
 	}
 	if err != nil {

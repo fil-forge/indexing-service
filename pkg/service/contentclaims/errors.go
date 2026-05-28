@@ -1,41 +1,5 @@
 package contentclaims
 
-import (
-	"github.com/ipld/go-ipld-prime/datamodel"
-	"github.com/ipld/go-ipld-prime/node/basicnode"
-)
+import "github.com/fil-forge/ucantone/errors"
 
-type Failure struct {
-	name    string
-	message string
-}
-
-func (f Failure) Error() string {
-	return f.message
-}
-
-func (f Failure) Name() string {
-	return f.name
-}
-
-func (f Failure) ToIPLD() (datamodel.Node, error) {
-	np := basicnode.Prototype.Any
-	nb := np.NewBuilder()
-	ma, err := nb.BeginMap(2)
-	if err != nil {
-		return nil, err
-	}
-	ma.AssembleKey().AssignString("name")
-	ma.AssembleValue().AssignString(f.name)
-	ma.AssembleKey().AssignString("message")
-	ma.AssembleValue().AssignString(f.message)
-	ma.Finish()
-	return nb.Build(), nil
-}
-
-func NewMissingClaimError() Failure {
-	return Failure{
-		name:    "MissingClaim",
-		message: "Claim data was not found in the invocation payload.",
-	}
-}
+var ErrMissingClaim = errors.New("MissingClaim", "Claim data was not found in the invocation payload.")

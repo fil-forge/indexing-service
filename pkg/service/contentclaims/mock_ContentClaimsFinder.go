@@ -8,8 +8,8 @@ import (
 	"context"
 	"net/url"
 
-	"github.com/fil-forge/go-ucanto/core/delegation"
-	"github.com/ipld/go-ipld-prime"
+	"github.com/fil-forge/ucantone/ucan"
+	"github.com/ipfs/go-cid"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -41,26 +41,26 @@ func (_m *MockContentClaimsFinder) EXPECT() *MockContentClaimsFinder_Expecter {
 }
 
 // Find provides a mock function for the type MockContentClaimsFinder
-func (_mock *MockContentClaimsFinder) Find(ctx context.Context, claim ipld.Link, fetchURL *url.URL) (delegation.Delegation, error) {
+func (_mock *MockContentClaimsFinder) Find(ctx context.Context, claim cid.Cid, fetchURL *url.URL) (ucan.Invocation, error) {
 	ret := _mock.Called(ctx, claim, fetchURL)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Find")
 	}
 
-	var r0 delegation.Delegation
+	var r0 ucan.Invocation
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, ipld.Link, *url.URL) (delegation.Delegation, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, cid.Cid, *url.URL) (ucan.Invocation, error)); ok {
 		return returnFunc(ctx, claim, fetchURL)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, ipld.Link, *url.URL) delegation.Delegation); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, cid.Cid, *url.URL) ucan.Invocation); ok {
 		r0 = returnFunc(ctx, claim, fetchURL)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(delegation.Delegation)
+			r0 = ret.Get(0).(ucan.Invocation)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, ipld.Link, *url.URL) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, cid.Cid, *url.URL) error); ok {
 		r1 = returnFunc(ctx, claim, fetchURL)
 	} else {
 		r1 = ret.Error(1)
@@ -75,21 +75,21 @@ type MockContentClaimsFinder_Find_Call struct {
 
 // Find is a helper method to define mock.On call
 //   - ctx context.Context
-//   - claim ipld.Link
+//   - claim cid.Cid
 //   - fetchURL *url.URL
 func (_e *MockContentClaimsFinder_Expecter) Find(ctx interface{}, claim interface{}, fetchURL interface{}) *MockContentClaimsFinder_Find_Call {
 	return &MockContentClaimsFinder_Find_Call{Call: _e.mock.On("Find", ctx, claim, fetchURL)}
 }
 
-func (_c *MockContentClaimsFinder_Find_Call) Run(run func(ctx context.Context, claim ipld.Link, fetchURL *url.URL)) *MockContentClaimsFinder_Find_Call {
+func (_c *MockContentClaimsFinder_Find_Call) Run(run func(ctx context.Context, claim cid.Cid, fetchURL *url.URL)) *MockContentClaimsFinder_Find_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 ipld.Link
+		var arg1 cid.Cid
 		if args[1] != nil {
-			arg1 = args[1].(ipld.Link)
+			arg1 = args[1].(cid.Cid)
 		}
 		var arg2 *url.URL
 		if args[2] != nil {
@@ -104,12 +104,12 @@ func (_c *MockContentClaimsFinder_Find_Call) Run(run func(ctx context.Context, c
 	return _c
 }
 
-func (_c *MockContentClaimsFinder_Find_Call) Return(delegation1 delegation.Delegation, err error) *MockContentClaimsFinder_Find_Call {
-	_c.Call.Return(delegation1, err)
+func (_c *MockContentClaimsFinder_Find_Call) Return(invocation ucan.Invocation, err error) *MockContentClaimsFinder_Find_Call {
+	_c.Call.Return(invocation, err)
 	return _c
 }
 
-func (_c *MockContentClaimsFinder_Find_Call) RunAndReturn(run func(ctx context.Context, claim ipld.Link, fetchURL *url.URL) (delegation.Delegation, error)) *MockContentClaimsFinder_Find_Call {
+func (_c *MockContentClaimsFinder_Find_Call) RunAndReturn(run func(ctx context.Context, claim cid.Cid, fetchURL *url.URL) (ucan.Invocation, error)) *MockContentClaimsFinder_Find_Call {
 	_c.Call.Return(run)
 	return _c
 }

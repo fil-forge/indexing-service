@@ -1,22 +1,27 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"time"
 
-	"github.com/fil-forge/go-libstoracha/ipnipublisher/notifier"
-	"github.com/fil-forge/go-libstoracha/ipnipublisher/publisher"
-	"github.com/fil-forge/go-libstoracha/ipnipublisher/queue"
-	awspublishingqueue "github.com/fil-forge/go-libstoracha/ipnipublisher/queue/aws"
-	"github.com/fil-forge/go-libstoracha/ipnipublisher/store"
-	"github.com/fil-forge/go-libstoracha/metadata"
-	userver "github.com/fil-forge/go-ucanto/server"
+	"github.com/fil-forge/go-ipni-tools/pkg/metadata"
+	"github.com/fil-forge/go-ipni-tools/pkg/notifier"
+	"github.com/fil-forge/go-ipni-tools/pkg/publisher"
+	"github.com/fil-forge/go-ipni-tools/pkg/queue"
+	"github.com/fil-forge/go-ipni-tools/pkg/store"
 	"github.com/fil-forge/indexing-service/pkg/aws"
-	"github.com/fil-forge/indexing-service/pkg/principalresolver"
 	"github.com/fil-forge/indexing-service/pkg/redis"
 	"github.com/fil-forge/indexing-service/pkg/server"
 	"github.com/fil-forge/indexing-service/pkg/service/providercacher"
 	"github.com/fil-forge/indexing-service/pkg/service/providerindex/remotesyncer"
 	"github.com/fil-forge/indexing-service/pkg/telemetry"
+	"github.com/fil-forge/libforge/didresolver"
+	"github.com/fil-forge/ucantone/did"
+	"github.com/fil-forge/ucantone/principal/verifier"
+	userver "github.com/fil-forge/ucantone/server"
+	"github.com/fil-forge/ucantone/ucan"
+	"github.com/fil-forge/ucantone/validator"
 	goredis "github.com/redis/go-redis/v9"
 	"github.com/urfave/cli/v2"
 	"go.opentelemetry.io/otel/sdk/trace"
@@ -40,15 +45,32 @@ var awsCmd = &cli.Command{
 			server.WithIdentity(cfg.Signer),
 		}
 
-		presolv, err := principalresolver.New(cfg.PrincipalMapping)
+		mapResolv, err := didresolver.NewMapResolver(cfg.PrincipalMapping)
 		if err != nil {
-			return fmt.Errorf("creating principal resolver: %w", err)
+			return fmt.Errorf("creating map resolver: %w", err)
 		}
+		httpResolv, err := didresolver.NewHTTPResolver()
+		if err != nil {
+			return fmt.Errorf("creating HTTP resolver: %w", err)
+		}
+		cacheResolv, err := didresolver.NewCachedResolver(httpResolv.Resolve, time.Hour*3)
+		if err != nil {
+			return fmt.Errorf("creating cached HTTP resolver: %w", err)
+		}
+		selfResolv := didresolver.NewSelfResolver(cfg.ID)
+		tierResolv := didresolver.NewTieredResolver(selfResolv.Resolve, mapResolv.Resolve, cacheResolv.Resolve)
 
 		srvOpts = append(
 			srvOpts,
 			server.WithContentClaimsOptions(
-				userver.WithPrincipalResolver(presolv.ResolveDIDKey),
+				userver.WithValidationOptions(
+					validator.WithDIDVerifierResolvers(map[string]validator.DIDVerifierResolverFunc{
+						"key": func(ctx context.Context, did did.DID) (ucan.Verifier, error) {
+							return verifier.FromDIDKey(did)
+						},
+						"web": tierResolv.Resolve,
+					}),
+				),
 			),
 		)
 
@@ -100,8 +122,6 @@ var awsCmd = &cli.Command{
 		advertisementPublisher.Start()
 		defer advertisementPublisher.Stop()
 
-		srvOpts = append(srvOpts, server.WithIPNIPublisherStore(setupIPNIPublisherStore(cfg)))
-
 		return server.ListenAndServe(addr, indexer, srvOpts...)
 	},
 }
@@ -148,8 +168,8 @@ func setupIPNIPublisherStore(cfg aws.Config) *store.AdStore {
 }
 
 func setupIPNIPublisher(cfg aws.Config) (*queue.PublishingQueuePoller, *queue.AdvertisementPublishingQueuePoller, error) {
-	publishingQueue := awspublishingqueue.NewSQSPublishingQueue(cfg.Config, cfg.SQSPublishingQueueID, cfg.PublishingBucket)
-	advertisementPublishingQueue := awspublishingqueue.NewSQSAdvertisementPublishingQueue(cfg.Config, cfg.SQSAdvertisementPublishingQueueID)
+	publishingQueue := aws.NewSQSPublishingQueue(cfg.Config, cfg.SQSPublishingQueueID, cfg.PublishingBucket)
+	advertisementPublishingQueue := aws.NewSQSAdvertisementPublishingQueue(cfg.Config, cfg.SQSAdvertisementPublishingQueueID)
 	store := setupIPNIPublisherStore(cfg)
 	advertisementQueuePublisher := queue.NewAdvertisementQueuePublisher(advertisementPublishingQueue, store)
 	publishingQueuePoller, err := queue.NewPublishingQueuePoller(publishingQueue, advertisementQueuePublisher)

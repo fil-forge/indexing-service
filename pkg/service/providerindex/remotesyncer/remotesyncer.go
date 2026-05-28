@@ -3,7 +3,7 @@ package remotesyncer
 import (
 	"context"
 
-	"github.com/fil-forge/go-libstoracha/ipnipublisher/store"
+	"github.com/fil-forge/go-ipni-tools/pkg/store"
 	"github.com/fil-forge/indexing-service/pkg/types"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/ipld/go-ipld-prime"

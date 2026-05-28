@@ -6,12 +6,13 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/fil-forge/go-libstoracha/blobindex"
-	"github.com/fil-forge/go-libstoracha/capabilities/assert"
-	"github.com/fil-forge/go-ucanto/core/dag/blockstore"
-	"github.com/fil-forge/go-ucanto/core/delegation"
-	"github.com/fil-forge/go-ucanto/core/ipld"
-	"github.com/fil-forge/go-ucanto/did"
+	"github.com/fil-forge/go-libstoracha/digestutil"
+	"github.com/fil-forge/libforge/blobindex"
+	assertcaps "github.com/fil-forge/libforge/commands/assert"
+	"github.com/fil-forge/ucantone/did"
+	"github.com/fil-forge/ucantone/ucan"
+	"github.com/fil-forge/ucantone/ucan/container"
+	"github.com/fil-forge/ucantone/ucan/invocation"
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multibase"
 	"github.com/multiformats/go-multihash"
@@ -29,7 +30,7 @@ var queryCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:    "url",
 			Aliases: []string{"u"},
-			Value:   "https://indexer.storacha.network",
+			Value:   "https://indexer.forge.fil.one",
 			Usage:   "URL of the indexer to query.",
 		},
 		&cli.StringFlag{
@@ -44,9 +45,9 @@ var queryCmd = &cli.Command{
 			Value:   "standard",
 		},
 		&cli.StringFlag{
-			Name:    "delegation",
+			Name:    "delegations",
 			Aliases: []string{"d"},
-			Usage:   "a delegation allowing the indexer to fetch content from the space",
+			Usage:   "a UCAN container of delegations allowing the indexer to fetch content from the space",
 		},
 		&cli.BoolFlag{
 			Name:    "enabled-telemetry",
@@ -114,13 +115,13 @@ var queryCmd = &cli.Command{
 			}
 		}
 
-		var delegations []delegation.Delegation
-		if cCtx.IsSet("delegation") {
-			d, err := delegation.Parse(cCtx.String("delegation"))
+		var delegations []ucan.Delegation
+		if cCtx.IsSet("delegations") {
+			ct, err := container.Decode([]byte(cCtx.String("delegations")))
 			if err != nil {
-				return fmt.Errorf("parsing delegation: %w", err)
+				return fmt.Errorf("parsing UCAN container: %w", err)
 			}
-			delegations = append(delegations, d)
+			delegations = ct.Delegations()
 		}
 
 		qr, err := c.QueryClaims(cCtx.Context, types.Query{
@@ -133,24 +134,16 @@ var queryCmd = &cli.Command{
 			return fmt.Errorf("querying service: %w", err)
 		}
 
-		blocks, err := blockstore.NewBlockReader(blockstore.WithBlocksIterator(qr.Blocks()))
-		if err != nil {
-			return fmt.Errorf("reading result blocks: %w", err)
-		}
-
-		blockmap := map[ipld.Link]ipld.Block{}
-		for b, err := range qr.Blocks() {
-			if err != nil {
-				return fmt.Errorf("iterating blocks: %w", err)
-			}
-			blockmap[b.Link()] = b
+		blockmap := map[cid.Cid][]byte{}
+		for _, b := range qr.Blocks() {
+			blockmap[b.Link] = b.Data
 		}
 
 		fmt.Println("")
 		fmt.Println("Query:")
 		fmt.Printf("  Hashes (%d):\n", len(digests))
 		for _, digest := range digests {
-			fmt.Printf("    %s\n", formatDigest(digest))
+			fmt.Printf("    %s\n", digestutil.Format(digest))
 		}
 		if len(spaces) > 0 {
 			fmt.Printf("  Spaces (%d):\n", len(spaces))
@@ -162,56 +155,58 @@ var queryCmd = &cli.Command{
 		fmt.Println("Results:")
 		fmt.Printf("  Claims (%d):\n", len(qr.Claims()))
 		for _, root := range qr.Claims() {
-			claim, err := delegation.NewDelegationView(root, blocks)
+			claimBytes, ok := blockmap[root]
+			if !ok {
+				return fmt.Errorf("missing claim block: %w", err)
+			}
+			claim, err := invocation.Decode(claimBytes)
 			if err != nil {
-				return fmt.Errorf("decoding delegation: %w", err)
+				return fmt.Errorf("decoding claim: %w", err)
 			}
 
 			fmt.Printf("    %s\n", claim.Link())
 			fmt.Println("      Type:")
-			fmt.Printf("        %s\n", claim.Capabilities()[0].Can())
-			switch claim.Capabilities()[0].Can() {
-			case assert.LocationAbility:
-				nb, err := assert.LocationCaveatsReader.Read(claim.Capabilities()[0].Nb())
-				if err != nil {
-					return fmt.Errorf("reading %s caveats: %w", assert.LocationAbility, err)
+			fmt.Printf("        %s\n", claim.Command())
+			switch claim.Command() {
+			case assertcaps.Location.Command:
+				var args assertcaps.LocationArguments
+				if err := args.UnmarshalCBOR(bytes.NewReader(claim.ArgumentsBytes())); err != nil {
+					return fmt.Errorf("decoding %s arguments: %w", assertcaps.Location, err)
 				}
 				fmt.Println("      Content:")
-				fmt.Printf("        %s\n", formatDigest(nb.Content.Hash()))
-				if nb.Space != did.Undef {
+				fmt.Printf("        %s\n", digestutil.Format(args.Content))
+				if args.Space != did.Undef {
 					fmt.Println("      Space:")
-					fmt.Printf("        %s\n", nb.Space.String())
+					fmt.Printf("        %s\n", args.Space)
 				}
 				fmt.Println("      Locations:")
-				for _, location := range nb.Location {
-					fmt.Printf("        %s\n", location.String())
+				for _, location := range args.Location {
+					fmt.Printf("        %s\n", location.URL())
 				}
-				if nb.Range != nil {
-					fmt.Printf("      Range: %d-", nb.Range.Offset)
-					if nb.Range.Length != nil {
-						fmt.Printf("%d\n", nb.Range.Offset+*nb.Range.Length)
+				if args.Range != nil {
+					fmt.Printf("      Range: %d-", args.Range.Start)
+					if args.Range.End != nil {
+						fmt.Printf("%d\n", *args.Range.End)
 					} else {
 						fmt.Println("")
 					}
 				}
-			case assert.EqualsAbility:
-				nb, err := assert.EqualsCaveatsReader.Read(claim.Capabilities()[0].Nb())
-				if err != nil {
-					return fmt.Errorf("reading %s caveats: %w", assert.LocationAbility, err)
+			case assertcaps.Equals.Command:
+				var args assertcaps.EqualsArguments
+				if err := args.UnmarshalCBOR(bytes.NewReader(claim.ArgumentsBytes())); err != nil {
+					return fmt.Errorf("decoding %s arguments: %w", assertcaps.Equals, err)
 				}
 				fmt.Println("      Content:")
-				fmt.Printf("        %s\n", formatDigest(nb.Content.Hash()))
+				fmt.Printf("        %s\n", digestutil.Format(args.Content))
 				fmt.Println("      Equals:")
-				fmt.Printf("        %s\n", nb.Equals)
-			case assert.IndexAbility:
-				nb, err := assert.IndexCaveatsReader.Read(claim.Capabilities()[0].Nb())
-				if err != nil {
-					return fmt.Errorf("reading %s caveats: %w", assert.LocationAbility, err)
+				fmt.Printf("        %s\n", args.Equals)
+			case assertcaps.Index.Command:
+				var args assertcaps.IndexArguments
+				if err := args.UnmarshalCBOR(bytes.NewReader(claim.ArgumentsBytes())); err != nil {
+					return fmt.Errorf("decoding %s arguments: %w", assertcaps.Index.Command, err)
 				}
-				fmt.Println("      Content:")
-				fmt.Printf("        %s\n", nb.Content)
 				fmt.Println("      Index:")
-				fmt.Printf("        %s\n", nb.Index)
+				fmt.Printf("        %s\n", args.Index)
 			default:
 				fmt.Println("      (Unknown Claim)")
 			}
@@ -220,27 +215,22 @@ var queryCmd = &cli.Command{
 		fmt.Println("")
 		fmt.Printf("  Indexes (%d):\n", len(qr.Indexes()))
 		for _, root := range qr.Indexes() {
-			blk, ok, err := blocks.Get(root)
-			if err != nil {
-				return fmt.Errorf("getting index block: %w", err)
-			}
+			indexBytes, ok := blockmap[root]
 			if !ok {
 				return fmt.Errorf("missing index block: %w", err)
 			}
-			index, err := blobindex.Extract(bytes.NewReader(blk.Bytes()))
+			index, err := blobindex.Extract(bytes.NewReader(indexBytes))
 			if err != nil {
 				return fmt.Errorf("decoding index: %w", err)
 			}
 
 			fmt.Printf("    %s\n", root)
-			fmt.Println("      Content:")
-			fmt.Printf("        %s\n", index.Content())
 			fmt.Printf("      Shards (%d):\n", index.Shards().Size())
 			for shard, slices := range index.Shards().Iterator() {
-				fmt.Printf("        %s\n", formatDigest(shard))
+				fmt.Printf("        %s\n", digestutil.Format(shard))
 				fmt.Printf("          Slices (%d):\n", slices.Size())
 				for digest, position := range slices.Iterator() {
-					fmt.Printf("            %s @ %d-%d\n", formatDigest(digest), position.Offset, position.Offset+position.Length)
+					fmt.Printf("            %s @ %d-%d\n", digestutil.Format(digest), position.Start, position.End)
 				}
 			}
 		}
@@ -271,9 +261,4 @@ func parseCID(input string) (cid.Cid, error) {
 	}
 
 	return cid.NewCidV1(cid.Raw, digest), nil
-}
-
-func formatDigest(digest multihash.Multihash) string {
-	str, _ := multibase.Encode(multibase.Base58BTC, digest)
-	return str
 }

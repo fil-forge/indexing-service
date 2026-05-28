@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/fil-forge/go-libstoracha/blobindex"
 	"github.com/fil-forge/indexing-service/pkg/service/providercacher"
 	"github.com/fil-forge/indexing-service/pkg/types"
+	"github.com/fil-forge/libforge/blobindex"
 	"github.com/ipni/go-libipni/find/model"
 )
 
@@ -28,7 +28,7 @@ func WithCache(blobIndexLookup BlobIndexLookup, shardedDagIndexCache types.Shard
 	}
 }
 
-func (b *cachingLookup) Find(ctx context.Context, contextID types.EncodedContextID, provider model.ProviderResult, req types.RetrievalRequest) (blobindex.ShardedDagIndexView, error) {
+func (b *cachingLookup) Find(ctx context.Context, contextID types.EncodedContextID, provider model.ProviderResult, req types.RetrievalRequest) (blobindex.ShardedDagIndex, error) {
 	// attempt to read index from cache and return it if succesful
 	index, err := b.shardDagIndexCache.Get(ctx, contextID)
 	if err == nil {

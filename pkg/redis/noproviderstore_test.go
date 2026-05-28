@@ -5,9 +5,8 @@ import (
 	"math/rand/v2"
 	"testing"
 
-	"github.com/fil-forge/go-libstoracha/testutil"
+	"github.com/fil-forge/indexing-service/pkg/internal/testutil"
 	"github.com/fil-forge/indexing-service/pkg/redis"
-	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	"github.com/multiformats/go-multicodec"
 	"github.com/multiformats/go-multihash"
 	"github.com/stretchr/testify/require"
@@ -33,11 +32,10 @@ func TestNoProviderStore(t *testing.T) {
 }
 
 func randomCodecList(t *testing.T, num int) (multihash.Multihash, []multicodec.Code) {
-	randomHash := testutil.RandomCID(t).(cidlink.Link).Cid.Hash()
+	randomHash := testutil.RandomCID(t).Hash()
 	codes := make([]multicodec.Code, 0, num)
 	for i := 0; i < num; i++ {
 		codes = append(codes, multicodec.Code(rand.Uint64()))
 	}
-
 	return randomHash, codes
 }

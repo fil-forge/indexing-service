@@ -9,7 +9,7 @@ graph TB
 
     %% API Gateway
     APIGW[API Gateway v2<br/>HTTP API] --> Lambda
-    APIGW --> CustomDomain[Custom Domain<br/>*.indexer.storacha.network]
+    APIGW --> CustomDomain[Custom Domain<br/>*.indexer.forge.fil.one]
     CustomDomain --> Route53[Route53<br/>DNS Zone]
     CustomDomain --> ACM[ACM Certificate]
 

@@ -6,33 +6,29 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/fil-forge/go-libstoracha/testutil"
-	"github.com/fil-forge/go-ucanto/core/delegation"
-	"github.com/fil-forge/go-ucanto/core/ipld"
+	"github.com/fil-forge/indexing-service/pkg/internal/testutil"
 	"github.com/fil-forge/indexing-service/pkg/service/contentclaims"
 	"github.com/fil-forge/indexing-service/pkg/types"
+	"github.com/fil-forge/ucantone/ucan"
+	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 )
 
 func TestWithStore__Find(t *testing.T) {
-	// Create a cached claim
-	storedClaim := testutil.RandomLocationDelegation(t)
-	notStoredClaim := testutil.RandomIndexDelegation(t)
+	storedClaim := testutil.RandomLocationCommitment(t)
+	notStoredClaim := testutil.RandomIndexClaim(t)
 
-	// Create a test CID
 	storedCid := storedClaim.Link()
 	notStoredCid := notStoredClaim.Link()
 
-	// sample error
 	anError := errors.New("something went wrong")
-	// Define test cases
 	testCases := []struct {
 		name          string
-		claimCid      ipld.Link
+		claimCid      cid.Cid
 		getErr        error
 		expectedErr   error
 		baseFinder    *mockFinder
-		expectedClaim delegation.Delegation
+		expectedClaim ucan.Invocation
 	}{
 		{
 			name:          "Claim stored",
@@ -60,21 +56,18 @@ func TestWithStore__Find(t *testing.T) {
 		},
 	}
 
-	// Run test cases
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			mockStore := &MockContentClaimsStore{
 				getErr: tc.getErr,
-				claims: map[string]delegation.Delegation{
+				claims: map[string]ucan.Invocation{
 					storedCid.String(): storedClaim,
 				},
 			}
-			// generate a test server for requests
 			finder := tc.baseFinder
 			if finder == nil {
 				finder = &mockFinder{notStoredClaim, nil}
 			}
-			// Create ClaimLookup instance
 			cl := contentclaims.WithStore(finder, mockStore)
 
 			claim, err := cl.Find(context.Background(), tc.claimCid, testutil.TestURL)
@@ -83,20 +76,19 @@ func TestWithStore__Find(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 			}
-			testutil.RequireEqualDelegation(t, tc.expectedClaim, claim)
+			testutil.RequireEqualClaim(t, tc.expectedClaim, claim)
 		})
 	}
 }
 
-// MockContentClaimsStore is a mock implementation of the ContentClaimsStore interface
 type MockContentClaimsStore struct {
 	setErr, getErr error
-	claims         map[string]delegation.Delegation
+	claims         map[string]ucan.Invocation
 }
 
 var _ types.ContentClaimsStore = &MockContentClaimsStore{}
 
-func (m *MockContentClaimsStore) Get(ctx context.Context, key ipld.Link) (delegation.Delegation, error) {
+func (m *MockContentClaimsStore) Get(ctx context.Context, key cid.Cid) (ucan.Invocation, error) {
 	if m.getErr != nil {
 		return nil, m.getErr
 	}
@@ -107,7 +99,7 @@ func (m *MockContentClaimsStore) Get(ctx context.Context, key ipld.Link) (delega
 	return claim, nil
 }
 
-func (m *MockContentClaimsStore) Put(ctx context.Context, key ipld.Link, claim delegation.Delegation) error {
+func (m *MockContentClaimsStore) Put(ctx context.Context, key cid.Cid, claim ucan.Invocation) error {
 	if m.setErr != nil {
 		return m.setErr
 	}

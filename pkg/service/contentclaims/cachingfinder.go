@@ -6,10 +6,9 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/fil-forge/go-ucanto/core/delegation"
-	"github.com/fil-forge/indexing-service/pkg/internal/link"
 	"github.com/fil-forge/indexing-service/pkg/types"
-	"github.com/ipld/go-ipld-prime"
+	"github.com/fil-forge/ucantone/ucan"
+	"github.com/ipfs/go-cid"
 )
 
 type cachingFinder struct {
@@ -25,9 +24,9 @@ func WithCache(finder Finder, cache types.ContentClaimsCache) Finder {
 }
 
 // Find attempts to fetch a claim from either the local cache or via the provided URL (caching the result if its fetched)
-func (cl *cachingFinder) Find(ctx context.Context, id ipld.Link, fetchURL *url.URL) (delegation.Delegation, error) {
+func (cl *cachingFinder) Find(ctx context.Context, id cid.Cid, fetchURL *url.URL) (ucan.Invocation, error) {
 	// attempt to read claim from cache and return it if succesful
-	claim, err := cl.cache.Get(ctx, link.ToCID(id))
+	claim, err := cl.cache.Get(ctx, id)
 	if err == nil {
 		return claim, nil
 	}
@@ -44,7 +43,7 @@ func (cl *cachingFinder) Find(ctx context.Context, id ipld.Link, fetchURL *url.U
 	}
 
 	// cache the claim for the future
-	err = cl.cache.Set(ctx, link.ToCID(claim.Link()), claim, true)
+	err = cl.cache.Set(ctx, id, claim, true)
 	if err != nil {
 		return nil, fmt.Errorf("caching claim: %w", err)
 	}

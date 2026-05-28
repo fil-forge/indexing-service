@@ -6,46 +6,39 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/fil-forge/go-libstoracha/blobindex"
-	"github.com/fil-forge/go-libstoracha/testutil"
-	"github.com/fil-forge/indexing-service/pkg/internal/link"
+	"github.com/fil-forge/indexing-service/pkg/internal/testutil"
 	"github.com/fil-forge/indexing-service/pkg/service/providercacher"
 	"github.com/fil-forge/indexing-service/pkg/types"
+	"github.com/fil-forge/libforge/blobindex"
 	"github.com/ipni/go-libipni/find/model"
 	"github.com/multiformats/go-multihash"
 	"github.com/stretchr/testify/require"
 )
 
 func TestSimpleProviderCacher_CacheProviderForIndexRecords(t *testing.T) {
-
-	// Create a test context
 	ctx := context.Background()
 
-	// Create test providers
 	testProvider := testutil.RandomProviderResult(t)
 	testProvider2 := testutil.RandomProviderResult(t)
 
-	// Create a test index with random CIDs
-	testCid1 := testutil.RandomCID(t)
-	shardIndex := blobindex.NewShardedDagIndexView(testCid1, 2)
+	shardIndex := blobindex.NewShardedDagIndex(2)
 
 	shardMhs := testutil.RandomMultihashes(t, 2)
 	sliceMhs := testutil.RandomMultihashes(t, 6)
 	for i := range 2 {
 		for j := range 3 {
-			shardIndex.SetSlice(shardMhs[i], sliceMhs[i*3+j], blobindex.Position{})
+			shardIndex.SetSlice(shardMhs[i], sliceMhs[i*3+j], blobindex.Range{})
 		}
 	}
-	// the root block should be in the index also
-	shardIndex.SetSlice(shardMhs[0], link.ToCID(testCid1).Hash(), blobindex.Position{})
+	rootMh := testutil.RandomMultihash(t)
+	shardIndex.SetSlice(shardMhs[0], rootMh, blobindex.Range{})
 
-	testCid2 := testutil.RandomCID(t)
-	shardIndex2 := blobindex.NewShardedDagIndexView(testCid2, 2)
+	shardIndex2 := blobindex.NewShardedDagIndex(2)
 	for j := range 2 {
-		shardIndex2.SetSlice(shardMhs[0], sliceMhs[j], blobindex.Position{})
+		shardIndex2.SetSlice(shardMhs[0], sliceMhs[j], blobindex.Range{})
 	}
-	// the root block should be in the index also
-	shardIndex2.SetSlice(shardMhs[0], link.ToCID(testCid2).Hash(), blobindex.Position{})
+	rootMh2 := testutil.RandomMultihash(t)
+	shardIndex2.SetSlice(shardMhs[0], rootMh2, blobindex.Range{})
 
 	evensFilled := func() map[string][]model.ProviderResult {
 		starter := make(map[string][]model.ProviderResult)
@@ -57,11 +50,10 @@ func TestSimpleProviderCacher_CacheProviderForIndexRecords(t *testing.T) {
 		return starter
 	}
 
-	// Define test cases
 	testCases := []struct {
 		name         string
 		provider     model.ProviderResult
-		index        blobindex.ShardedDagIndexView
+		index        blobindex.ShardedDagIndex
 		getErr       error
 		setErr       error
 		initialStore map[string][]model.ProviderResult
@@ -112,10 +104,8 @@ func TestSimpleProviderCacher_CacheProviderForIndexRecords(t *testing.T) {
 		},
 	}
 
-	// Run test cases
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			// Initialize mock store
 			initialStore := tc.initialStore
 			if initialStore == nil {
 				initialStore = make(map[string][]model.ProviderResult)
@@ -126,7 +116,6 @@ func TestSimpleProviderCacher_CacheProviderForIndexRecords(t *testing.T) {
 				store:  initialStore,
 			}
 
-			// Create SimpleProviderCacher instance
 			cacher := providercacher.NewSimpleProviderCacher(mockStore)
 
 			err := cacher.CacheProviderForIndexRecords(ctx, tc.provider, tc.index)
@@ -144,15 +133,12 @@ func TestSimpleProviderCacher_CacheProviderForIndexRecords(t *testing.T) {
 
 // Simulate a 10k NFT - a directory with 10k image/metadata files
 func TestSimpleProviderCacher_10kNFT(t *testing.T) {
-	// Create a test context
 	ctx := context.Background()
 
 	prov := testutil.RandomProviderResult(t)
-	root := testutil.RandomCID(t)
-	idx := blobindex.NewShardedDagIndexView(root, 2)
+	idx := blobindex.NewShardedDagIndex(2)
 
 	shardDigests := testutil.RandomMultihashes(t, 2)
-	// make 10_000 unique hashes
 	sliceDigests := make([]multihash.Multihash, 0, 10_000)
 	for range 10_000 {
 		for {
@@ -167,11 +153,11 @@ func TestSimpleProviderCacher_10kNFT(t *testing.T) {
 
 	for i := range 2 {
 		for j := range 5_000 {
-			idx.SetSlice(shardDigests[i], sliceDigests[i*5_000+j], blobindex.Position{})
+			idx.SetSlice(shardDigests[i], sliceDigests[i*5_000+j], blobindex.Range{})
 		}
 	}
-	// the root block should be in the index also
-	idx.SetSlice(shardDigests[0], link.ToCID(root).Hash(), blobindex.Position{})
+	rootMh := testutil.RandomMultihash(t)
+	idx.SetSlice(shardDigests[0], rootMh, blobindex.Range{})
 
 	mockStore := &MockProviderStore{store: map[string][]model.ProviderResult{}}
 
@@ -180,7 +166,6 @@ func TestSimpleProviderCacher_10kNFT(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// MockProviderStore is a mock implementation of the ProviderStore interface
 type MockProviderStore struct {
 	setErr, getErr error
 	store          map[string][]model.ProviderResult
@@ -207,16 +192,15 @@ func (m *MockProviderStore) Add(ctx context.Context, hash multihash.Multihash, p
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	for _, provider := range providers {
-		providers := m.store[hash.String()]
-		if !slices.ContainsFunc(providers, func(p model.ProviderResult) bool { return p.Equal(provider) }) {
-			m.store[hash.String()] = append(providers, provider)
+		existing := m.store[hash.String()]
+		if !slices.ContainsFunc(existing, func(p model.ProviderResult) bool { return p.Equal(provider) }) {
+			m.store[hash.String()] = append(existing, provider)
 			written++
 		}
 	}
 	return written, nil
 }
 
-// SetExpirable implements types.ProviderStore.
 func (m *MockProviderStore) SetExpirable(ctx context.Context, key multihash.Multihash, expires bool) error {
 	return nil
 }
@@ -238,20 +222,12 @@ type MockBatcher struct {
 }
 
 func (mb *MockBatcher) Add(ctx context.Context, key multihash.Multihash, newProviders ...model.ProviderResult) error {
-	mb.commands = append(mb.commands, MockCommand{
-		op:     "add",
-		key:    key,
-		values: newProviders,
-	})
+	mb.commands = append(mb.commands, MockCommand{op: "add", key: key, values: newProviders})
 	return nil
 }
 
 func (mb *MockBatcher) SetExpirable(ctx context.Context, key multihash.Multihash, expires bool) error {
-	mb.commands = append(mb.commands, MockCommand{
-		op:     "setExpirable",
-		key:    key,
-		expire: expires,
-	})
+	mb.commands = append(mb.commands, MockCommand{op: "setExpirable", key: key, expire: expires})
 	return nil
 }
 

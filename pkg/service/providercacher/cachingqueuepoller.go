@@ -1,14 +1,14 @@
 package providercacher
 
 import (
-	"github.com/fil-forge/go-libstoracha/queuepoller"
+	"github.com/fil-forge/go-ipni-tools/pkg/queue"
 )
 
 // CachingQueuePoller polls a queue for provider caching jobs and processes them
 // using the provided ProviderCacher and SQSCachingDecoder.
-type CachingQueuePoller = queuepoller.QueuePoller[ProviderCachingJob]
+type CachingQueuePoller = queue.QueuePoller[ProviderCachingJob]
 
 // NewCachingQueuePoller creates a new CachingQueuePoller instance.
-func NewCachingQueuePoller(queue CachingQueue, cacher ProviderCacher, opts ...queuepoller.Option) (*CachingQueuePoller, error) {
-	return queuepoller.NewQueuePoller(queue, queuepoller.JobHandler(NewJobHandler(cacher).Handle), opts...)
+func NewCachingQueuePoller(cachingQueue CachingQueue, cacher ProviderCacher, opts ...queue.Option) (*CachingQueuePoller, error) {
+	return queue.NewQueuePoller(cachingQueue, queue.JobHandler(NewJobHandler(cacher).Handle), opts...)
 }

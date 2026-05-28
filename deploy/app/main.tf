@@ -9,8 +9,8 @@ terraform {
     }
   }
   backend "s3" {
-    bucket  = "storacha-terraform-state"
-    key     = "storacha/${var.app}/terraform.tfstate"
+    bucket  = "forge-terraform-state"
+    key     = "forge/${var.app}/terraform.tfstate"
     region  = "us-west-2"
     encrypt = true
   }
@@ -23,9 +23,9 @@ provider "aws" {
     tags = {
       "Environment" = terraform.workspace
       "ManagedBy"   = "OpenTofu"
-      Owner         = "storacha"
-      Team          = "Storacha Engineering"
-      Organization  = "Storacha"
+      Owner         = "forge"
+      Team          = "Filecoin Foundation Engineering"
+      Organization  = "Filecoin Foundation"
       Project       = "${var.app}"
     }
   }
@@ -80,7 +80,7 @@ module "app" {
       message_retention_seconds = 86400
     },
   ]
-  caches = ["providers","no-providers","indexes","claims",]
+  caches = ["providers", "no-providers", "indexes", "claims", ]
   topics = []
   tables = [
     {

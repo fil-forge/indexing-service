@@ -1,6 +1,6 @@
 # Indexing Services
 
-> Indexing for Storacha Network, Cached And Ready To Go
+> Indexing for the Forge Network, Cached And Ready To Go
 
 ## Table of Contents
 
@@ -71,7 +71,7 @@ This is a multibase encoded ed25519 private key used to sign receipts and for th
 This is the DID for this deployment (did:web:... for example). e.g.
 
 ```sh
-TF_VAR_did='did:web:yourname.indexer.storacha.network'
+TF_VAR_did='did:web:yourname.indexer.forge.fil.one'
 ```
 
 #### `TF_VAR_principal_mapping`
@@ -146,7 +146,7 @@ Attempts to find the given CID in the Indexer node. The result can be multiple L
 ./indexer query -u https://<INDEXING_SERVICE_URL> <CID>
 ```
 
-If you don't specify a node it will query the Storacha Production node at https://indexer.storacha.network .
+If you don't specify a node it will query the Storacha Production node at https://indexer.forge.fil.one .
 
 ## Releasing a new version
 

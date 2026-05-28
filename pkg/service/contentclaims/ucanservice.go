@@ -1,93 +1,97 @@
 package contentclaims
 
 import (
-	"context"
-
-	"github.com/fil-forge/go-libstoracha/capabilities/assert"
-	"github.com/fil-forge/go-libstoracha/capabilities/claim"
-	"github.com/fil-forge/go-ucanto/core/dag/blockstore"
-	"github.com/fil-forge/go-ucanto/core/delegation"
-	"github.com/fil-forge/go-ucanto/core/invocation"
-	"github.com/fil-forge/go-ucanto/core/receipt/fx"
-	"github.com/fil-forge/go-ucanto/core/result"
-	"github.com/fil-forge/go-ucanto/core/result/failure"
-	"github.com/fil-forge/go-ucanto/core/result/ok"
-	"github.com/fil-forge/go-ucanto/principal/ed25519/verifier"
-	"github.com/fil-forge/go-ucanto/server"
-	"github.com/fil-forge/go-ucanto/ucan"
 	"github.com/fil-forge/indexing-service/pkg/types"
+	assertcaps "github.com/fil-forge/libforge/commands/assert"
+	claimcaps "github.com/fil-forge/libforge/commands/claim"
+	"github.com/fil-forge/ucantone/binding"
+	"github.com/fil-forge/ucantone/did"
+	"github.com/fil-forge/ucantone/principal/ed25519/verifier"
+	"github.com/fil-forge/ucantone/server"
+	"github.com/fil-forge/ucantone/ucan"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/multiformats/go-multiaddr"
 )
 
 var log = logging.Logger("contentclaims")
 
-func NewUCANService(service types.Publisher) map[ucan.Ability]server.ServiceMethod[ok.Unit, failure.IPLDBuilderFailure] {
-	return map[ucan.Ability]server.ServiceMethod[ok.Unit, failure.IPLDBuilderFailure]{
-		assert.EqualsAbility: server.Provide(
-			assert.Equals,
-			func(ctx context.Context, cap ucan.Capability[assert.EqualsCaveats], inv invocation.Invocation, ictx server.InvocationContext) (result.Result[ok.Unit, failure.IPLDBuilderFailure], fx.Effects, error) {
-				err := service.Publish(ctx, inv)
+func NewUCANService(service types.Publisher) []server.Route {
+	return []server.Route{
+		assertcaps.Equals.Route(
+			func(
+				req *binding.Request[*assertcaps.EqualsArguments],
+				res *binding.Response[*assertcaps.EqualsOK],
+			) error {
+				claim := req.Invocation()
+				err := service.Publish(req.Context(), claim, req.Metadata())
 				if err != nil {
 					log.Errorf("publishing equals claim: %s", err)
-					return nil, nil, err
+					return err
 				}
-				return result.Ok[ok.Unit, failure.IPLDBuilderFailure](ok.Unit{}), nil, nil
+				return res.SetSuccess(&assertcaps.EqualsOK{})
 			},
 		),
-		assert.IndexAbility: server.Provide(
-			assert.Index,
-			func(ctx context.Context, cap ucan.Capability[assert.IndexCaveats], inv invocation.Invocation, ictx server.InvocationContext) (result.Result[ok.Unit, failure.IPLDBuilderFailure], fx.Effects, error) {
-				err := service.Publish(ctx, inv)
+		assertcaps.Index.Route(
+			func(
+				req *binding.Request[*assertcaps.IndexArguments],
+				res *binding.Response[*assertcaps.IndexOK],
+			) error {
+				claim := req.Invocation()
+				err := service.Publish(req.Context(), claim, req.Metadata())
 				if err != nil {
 					log.Errorf("publishing index claim: %s", err)
-					return nil, nil, err
+					return err
 				}
-				return result.Ok[ok.Unit, failure.IPLDBuilderFailure](ok.Unit{}), nil, nil
+				return res.SetSuccess(&assertcaps.IndexOK{})
 			},
 		),
-		claim.CacheAbility: server.Provide(
-			claim.Cache,
-			func(ctx context.Context, cap ucan.Capability[claim.CacheCaveats], inv invocation.Invocation, ictx server.InvocationContext) (result.Result[ok.Unit, failure.IPLDBuilderFailure], fx.Effects, error) {
-				peerid, err := toPeerID(inv.Issuer())
+		claimcaps.Cache.Route(
+			func(
+				req *binding.Request[*claimcaps.CacheArguments],
+				res *binding.Response[*claimcaps.CacheOK],
+			) error {
+				args := req.Task().Arguments()
+				peerid, err := toPeerID(req.Invocation().Issuer())
 				if err != nil {
-					return nil, nil, err
+					return err
 				}
 
-				provider := peer.AddrInfo{ID: peerid, Addrs: cap.Nb().Provider.Addresses}
-
-				bs, err := blockstore.NewBlockReader(blockstore.WithBlocksIterator(inv.Blocks()))
-				if err != nil {
-					return nil, nil, err
+				var addrs []multiaddr.Multiaddr
+				for _, a := range args.Provider.Addresses {
+					ma, err := multiaddr.NewMultiaddrBytes(a)
+					if err != nil {
+						return err
+					}
+					addrs = append(addrs, ma)
 				}
 
-				rootbl, present, err := bs.Get(cap.Nb().Claim)
-				if err != nil {
-					return nil, nil, err
+				provider := peer.AddrInfo{ID: peerid, Addrs: addrs}
+
+				var claim ucan.Invocation
+				for _, inv := range req.Metadata().Invocations() {
+					if inv.Link() == args.Claim {
+						claim = inv
+						break
+					}
 				}
-				if !present {
-					return result.Error[ok.Unit, failure.IPLDBuilderFailure](NewMissingClaimError()), nil, nil
+				if claim == nil {
+					return res.SetFailure(ErrMissingClaim)
 				}
 
-				claim, err := delegation.NewDelegation(rootbl, bs)
-				if err != nil {
-					return nil, nil, err
-				}
-
-				err = service.Cache(ctx, provider, claim)
+				err = service.Cache(req.Context(), provider, claim, req.Metadata())
 				if err != nil {
 					log.Errorf("caching claim: %s", err)
-					return nil, nil, err
+					return err
 				}
-				return result.Ok[ok.Unit, failure.IPLDBuilderFailure](ok.Unit{}), nil, nil
-			},
-		),
+				return res.SetSuccess(&claimcaps.CacheOK{})
+			}),
 	}
 }
 
-func toPeerID(principal ucan.Principal) (peer.ID, error) {
-	vfr, err := verifier.Decode(principal.DID().Bytes())
+func toPeerID(principal did.DID) (peer.ID, error) {
+	vfr, err := verifier.Parse(principal.String())
 	if err != nil {
 		return "", err
 	}
