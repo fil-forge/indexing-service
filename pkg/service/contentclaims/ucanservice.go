@@ -6,9 +6,9 @@ import (
 	claimcaps "github.com/fil-forge/libforge/commands/claim"
 	"github.com/fil-forge/ucantone/binding"
 	"github.com/fil-forge/ucantone/did"
-	"github.com/fil-forge/ucantone/principal/ed25519/verifier"
 	"github.com/fil-forge/ucantone/server"
 	"github.com/fil-forge/ucantone/ucan"
+	"github.com/fil-forge/ucantone/verification/multikey/ed25519/verifier"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -91,7 +91,7 @@ func NewUCANService(service types.Publisher) []server.Route {
 }
 
 func toPeerID(principal did.DID) (peer.ID, error) {
-	vfr, err := verifier.Parse(principal.String())
+	vfr, err := verifier.ParseKeyDID(principal.String())
 	if err != nil {
 		return "", err
 	}

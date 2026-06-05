@@ -137,7 +137,7 @@ func Build(claims map[cid.Cid]ucan.Invocation, indexes bytemap.ByteMap[types.Enc
 
 // BuildCompressed returns a QueryResult that, when there is a matching index entry for the
 // targetMh, replaces the full index with a single location claim for the targetMh
-func BuildCompressed(targetMh mh.Multihash, principal ucan.Signer, claims map[cid.Cid]ucan.Invocation, indexes bytemap.ByteMap[types.EncodedContextID, blobindex.ShardedDagIndex]) (types.QueryResult, error) {
+func BuildCompressed(targetMh mh.Multihash, principal ucan.Issuer, claims map[cid.Cid]ucan.Invocation, indexes bytemap.ByteMap[types.EncodedContextID, blobindex.ShardedDagIndex]) (types.QueryResult, error) {
 
 	// our goal here is to remove indexes from the query result if there are any
 	// if there are no indexes, we can just build the regular query result

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"time"
 
@@ -16,11 +15,11 @@ import (
 	"github.com/fil-forge/indexing-service/pkg/service/providercacher"
 	"github.com/fil-forge/indexing-service/pkg/service/providerindex/remotesyncer"
 	"github.com/fil-forge/indexing-service/pkg/telemetry"
-	"github.com/fil-forge/libforge/didresolver"
-	"github.com/fil-forge/ucantone/did"
-	"github.com/fil-forge/ucantone/principal/verifier"
+	"github.com/fil-forge/libforge/identity"
+	"github.com/fil-forge/ucantone/did/key"
+	"github.com/fil-forge/ucantone/did/utilresolvers"
+	"github.com/fil-forge/ucantone/did/web"
 	userver "github.com/fil-forge/ucantone/server"
-	"github.com/fil-forge/ucantone/ucan"
 	"github.com/fil-forge/ucantone/validator"
 	goredis "github.com/redis/go-redis/v9"
 	"github.com/urfave/cli/v2"
@@ -41,34 +40,35 @@ var awsCmd = &cli.Command{
 	Action: func(cCtx *cli.Context) error {
 		addr := fmt.Sprintf(":%d", cCtx.Int("port"))
 		cfg := aws.FromEnv(cCtx.Context)
+		id := identity.Identity{Issuer: cfg.ID}
 		srvOpts := []server.Option{
-			server.WithIdentity(cfg.Signer),
+			server.WithIdentity(id),
 		}
 
-		mapResolv, err := didresolver.NewMapResolver(cfg.PrincipalMapping)
+		wellKnownResolv, err := aws.NewPrincipalMappingResolver(cfg.PrincipalMapping)
 		if err != nil {
-			return fmt.Errorf("creating map resolver: %w", err)
+			return fmt.Errorf("creating principal mapping resolver: %w", err)
 		}
-		httpResolv, err := didresolver.NewHTTPResolver()
+
+		doc, err := id.DIDDocument()
+		if err != nil {
+			return fmt.Errorf("creating DID document: %w", err)
+		}
+		wellKnownResolv[cfg.ID.DID()] = doc
+
+		httpResolv, err := web.NewResolver()
 		if err != nil {
 			return fmt.Errorf("creating HTTP resolver: %w", err)
 		}
-		cacheResolv, err := didresolver.NewCachedResolver(httpResolv.Resolve, time.Hour*3)
-		if err != nil {
-			return fmt.Errorf("creating cached HTTP resolver: %w", err)
-		}
-		selfResolv := didresolver.NewSelfResolver(cfg.ID)
-		tierResolv := didresolver.NewTieredResolver(selfResolv.Resolve, mapResolv.Resolve, cacheResolv.Resolve)
+		cacheResolv := utilresolvers.NewCached(httpResolv, time.Hour*3)
 
 		srvOpts = append(
 			srvOpts,
 			server.WithContentClaimsOptions(
 				userver.WithValidationOptions(
-					validator.WithDIDVerifierResolvers(map[string]validator.DIDVerifierResolverFunc{
-						"key": func(ctx context.Context, did did.DID) (ucan.Verifier, error) {
-							return verifier.FromDIDKey(did)
-						},
-						"web": tierResolv.Resolve,
+					validator.WithDIDResolver(utilresolvers.ByMethod{
+						"key": key.Resolver,
+						"web": utilresolvers.Chain{wellKnownResolv, cacheResolv},
 					}),
 				),
 			),

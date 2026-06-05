@@ -23,9 +23,10 @@ import (
 	"github.com/fil-forge/libforge/bytemap"
 	ctypes "github.com/fil-forge/libforge/commands"
 	cassert "github.com/fil-forge/libforge/commands/assert"
-	"github.com/fil-forge/ucantone/principal/ed25519"
 	"github.com/fil-forge/ucantone/ucan"
 	"github.com/fil-forge/ucantone/ucan/invocation"
+	"github.com/fil-forge/ucantone/verification/multikey"
+	"github.com/fil-forge/ucantone/verification/multikey/ed25519"
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multibase"
 	"github.com/multiformats/go-multicodec"
@@ -33,10 +34,10 @@ import (
 )
 
 func main() {
-	storageID := must(ed25519.Generate())
-	uploadServiceID := must(ed25519.Generate())
-	indexingServiceID := must(ed25519.Generate())
-	space := must(ed25519.Generate())
+	storageID := multikey.KeyIssuer(must(ed25519.Generate()))
+	uploadServiceID := multikey.KeyIssuer(must(ed25519.Generate()))
+	indexingServiceID := multikey.KeyIssuer(must(ed25519.Generate()))
+	space := multikey.KeyIssuer(must(ed25519.Generate()))
 	spaceDID := space.DID()
 
 	blockBytes := randomBytes(32)
