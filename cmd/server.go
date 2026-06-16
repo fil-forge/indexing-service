@@ -175,7 +175,7 @@ var serverCmd = &cli.Command{
 					web.WithPatterns(resolveDIDPatterns...),
 				}
 				if cCtx.Bool("insecure-did-resolution") {
-					rslvOpts = append(rslvOpts, web.WithInsecure())
+					rslvOpts = append(rslvOpts, web.WithInsecure(true))
 				}
 
 				wellKnownResolv, err := aws.NewPrincipalMappingResolver(presets.PrincipalMapping)
