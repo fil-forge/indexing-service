@@ -15,7 +15,7 @@ import (
 	"github.com/fil-forge/libforge/identity"
 	"github.com/fil-forge/ucantone/did"
 	"github.com/fil-forge/ucantone/did/key"
-	"github.com/fil-forge/ucantone/did/utilresolvers"
+	"github.com/fil-forge/ucantone/did/resolver"
 	"github.com/fil-forge/ucantone/did/web"
 	userver "github.com/fil-forge/ucantone/server"
 	"github.com/fil-forge/ucantone/validator"
@@ -193,15 +193,15 @@ var serverCmd = &cli.Command{
 				if err != nil {
 					return fmt.Errorf("creating HTTP resolver: %w", err)
 				}
-				cacheResolv := utilresolvers.NewCached(httpResolv, time.Hour*3)
+				cacheResolv := resolver.NewCached(httpResolv, time.Hour*3)
 
 				opts = append(
 					opts,
 					server.WithContentClaimsOptions(
 						userver.WithValidationOptions(
-							validator.WithDIDResolver(utilresolvers.ByMethod{
+							validator.WithDIDResolver(resolver.ByMethod{
 								"key": key.Resolver,
-								"web": utilresolvers.Chain{wellKnownResolv, cacheResolv},
+								"web": resolver.Chain{wellKnownResolv, cacheResolv},
 							}),
 						),
 					),

@@ -27,7 +27,7 @@ import (
 	"github.com/fil-forge/indexing-service/pkg/telemetry"
 	"github.com/fil-forge/indexing-service/pkg/types"
 	"github.com/fil-forge/ucantone/did"
-	"github.com/fil-forge/ucantone/did/utilresolvers"
+	"github.com/fil-forge/ucantone/did/resolver"
 	"github.com/fil-forge/ucantone/verification/multikey"
 	"github.com/fil-forge/ucantone/verification/multikey/ed25519"
 	"github.com/getsentry/sentry-go"
@@ -314,8 +314,8 @@ func Construct(cfg Config) (types.Service, error) {
 	return service, nil
 }
 
-func NewPrincipalMappingResolver(mapping map[string]string) (utilresolvers.WellKnown, error) {
-	resolver := utilresolvers.WellKnown{}
+func NewPrincipalMappingResolver(mapping map[string]string) (resolver.WellKnown, error) {
+	resolver := resolver.WellKnown{}
 	for didStr, verifierStr := range mapping {
 		d, err := did.Parse(didStr)
 		if err != nil {
