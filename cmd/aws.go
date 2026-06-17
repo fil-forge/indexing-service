@@ -68,7 +68,7 @@ var awsCmd = &cli.Command{
 				userver.WithValidationOptions(
 					validator.WithDIDResolver(resolver.ByMethod{
 						"key": key.Resolver,
-						"web": resolver.Chain{wellKnownResolv, cacheResolv},
+						"web": resolver.Tiered{wellKnownResolv, cacheResolv},
 					}),
 				),
 			),
