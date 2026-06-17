@@ -23,7 +23,7 @@ import (
 	"github.com/fil-forge/indexing-service/pkg/service/providerindex/remotesyncer"
 	"github.com/fil-forge/indexing-service/pkg/types"
 	"github.com/fil-forge/libforge/jobqueue"
-	"github.com/fil-forge/ucantone/verification/multikey"
+	"github.com/fil-forge/ucantone/multikey"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	dssync "github.com/ipfs/go-datastore/sync"
