@@ -27,9 +27,9 @@ import (
 	"github.com/fil-forge/indexing-service/pkg/telemetry"
 	"github.com/fil-forge/indexing-service/pkg/types"
 	"github.com/fil-forge/ucantone/did"
-	"github.com/fil-forge/ucantone/principal"
-	"github.com/fil-forge/ucantone/principal/ed25519"
-	"github.com/fil-forge/ucantone/principal/signer"
+	"github.com/fil-forge/ucantone/did/resolver"
+	"github.com/fil-forge/ucantone/multikey"
+	"github.com/fil-forge/ucantone/multikey/ed25519"
 	"github.com/getsentry/sentry-go"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -94,7 +94,7 @@ type Config struct {
 	PrincipalMapping                  map[string]string
 	IPNIFormatPeerID                  string
 	IPNIFormatEndpoint                string
-	principal.Signer
+	Issuer                            multikey.Issuer
 }
 
 // FromEnv constructs the AWS Configuration from the environment
@@ -104,26 +104,24 @@ func FromEnv(ctx context.Context) Config {
 		panic(fmt.Errorf("loading aws default config: %w", err))
 	}
 
-	var id principal.Signer
-	id, err = ed25519.Parse(mustGetEnv("PRIVATE_KEY"))
+	idSigner, err := ed25519.Parse(mustGetEnv("PRIVATE_KEY"))
 	if err != nil {
 		panic(fmt.Errorf("parsing private key: %s", err))
 	}
 
+	var id multikey.Issuer
+	id = multikey.KeyIssuer(idSigner)
 	if len(os.Getenv("DID")) != 0 {
 		d, err := did.Parse(os.Getenv("DID"))
 		if err != nil {
 			panic(fmt.Errorf("parsing DID: %w", err))
 		}
-		id, err = signer.Wrap(id, d)
-		if err != nil {
-			panic(fmt.Errorf("wrapping server DID: %w", err))
-		}
+		id = multikey.NewIssuer(d, idSigner)
 	}
 
 	// id.Raw() returns the 32-byte seed; libp2p's UnmarshalEd25519PrivateKey
 	// wants the 64-byte stdlib form (seed||pub). Expand via NewKeyFromSeed.
-	cryptoPrivKey, err := crypto.UnmarshalEd25519PrivateKey(crypto_ed25519.NewKeyFromSeed(id.Raw()))
+	cryptoPrivKey, err := crypto.UnmarshalEd25519PrivateKey(crypto_ed25519.NewKeyFromSeed(idSigner.Raw()))
 	if err != nil {
 		panic(fmt.Errorf("unmarshaling private key: %w", err))
 	}
@@ -174,7 +172,7 @@ func FromEnv(ctx context.Context) Config {
 
 	return Config{
 		Config: awsConfig,
-		Signer: id,
+		Issuer: id,
 		ServiceConfig: construct.ServiceConfig{
 			ID:         id,
 			PrivateKey: cryptoPrivKey,
@@ -314,4 +312,40 @@ func Construct(cfg Config) (types.Service, error) {
 	}
 
 	return service, nil
+}
+
+func NewPrincipalMappingResolver(mapping map[string]string) (resolver.WellKnown, error) {
+	resolver := resolver.WellKnown{}
+	for didStr, verifierStr := range mapping {
+		d, err := did.Parse(didStr)
+		if err != nil {
+			return nil, fmt.Errorf("parsing DID %q for principal mapping: %w", didStr, err)
+		}
+
+		// Deprecated
+		if verifierStr[:8] == "did:key:" {
+			verifierStr = verifierStr[8:]
+		}
+
+		ver, err := multikey.Parse(verifierStr)
+		if err != nil {
+			return nil, fmt.Errorf("parsing verifier %q for principal mapping: %w", verifierStr, err)
+		}
+
+		doc := did.NewDocument(d)
+		vm := multikey.DeriveVerificationMethod(doc.Fragment("key"), ver)
+
+		if err := doc.VerificationMethods.Add(vm); err != nil {
+			return nil, err
+		}
+		if err := doc.CapabilityDelegation.Add(vm); err != nil {
+			return nil, err
+		}
+		if err := doc.CapabilityInvocation.Add(vm); err != nil {
+			return nil, err
+		}
+
+		resolver[d] = doc
+	}
+	return resolver, nil
 }

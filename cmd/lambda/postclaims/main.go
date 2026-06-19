@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"time"
 
@@ -9,11 +8,11 @@ import (
 	"github.com/fil-forge/indexing-service/cmd/lambda"
 	"github.com/fil-forge/indexing-service/pkg/aws"
 	"github.com/fil-forge/indexing-service/pkg/server"
-	"github.com/fil-forge/libforge/didresolver"
-	"github.com/fil-forge/ucantone/did"
-	"github.com/fil-forge/ucantone/principal/verifier"
+	"github.com/fil-forge/libforge/identity"
+	"github.com/fil-forge/ucantone/did/key"
+	"github.com/fil-forge/ucantone/did/resolver"
+	"github.com/fil-forge/ucantone/did/web"
 	ucanserver "github.com/fil-forge/ucantone/server"
-	"github.com/fil-forge/ucantone/ucan"
 	"github.com/fil-forge/ucantone/validator"
 )
 
@@ -27,31 +26,34 @@ func makeHandler(cfg aws.Config) any {
 		panic(err)
 	}
 
-	mapResolv, err := didresolver.NewMapResolver(cfg.PrincipalMapping)
+	wellKnownResolv, err := aws.NewPrincipalMappingResolver(cfg.PrincipalMapping)
 	if err != nil {
-		panic(fmt.Errorf("creating map resolver: %w", err))
+		return fmt.Errorf("creating principal mapping resolver: %w", err)
 	}
-	httpResolv, err := didresolver.NewHTTPResolver()
+
+	id := identity.Identity{Issuer: cfg.ID}
+	doc, err := id.DIDDocument()
 	if err != nil {
-		panic(fmt.Errorf("creating HTTP resolver: %w", err))
+		return fmt.Errorf("creating DID document: %w", err)
 	}
-	cacheResolv, err := didresolver.NewCachedResolver(httpResolv.Resolve, time.Hour*3)
+	wellKnownResolv[cfg.ID.DID()] = doc
+
+	httpResolv, err := web.NewResolver()
 	if err != nil {
-		panic(fmt.Errorf("creating cached HTTP resolver: %w", err))
+		return fmt.Errorf("creating HTTP resolver: %w", err)
 	}
-	selfResolv := didresolver.NewSelfResolver(cfg.ID)
-	tierResolv := didresolver.NewTieredResolver(selfResolv.Resolve, mapResolv.Resolve, cacheResolv.Resolve)
 
 	handler := httpadapter.NewV2(
 		server.PostClaimsHandler(
-			cfg.Signer,
+			cfg.Issuer,
 			service,
 			ucanserver.WithValidationOptions(
-				validator.WithDIDVerifierResolvers(map[string]validator.DIDVerifierResolverFunc{
-					"key": func(ctx context.Context, did did.DID) (ucan.Verifier, error) {
-						return verifier.FromDIDKey(did)
+				validator.WithDIDResolver(resolver.ByMethod{
+					"key": key.Resolver,
+					"web": resolver.Tiered{
+						wellKnownResolv,
+						resolver.NewCached(httpResolv, time.Hour*3),
 					},
-					"web": tierResolv.Resolve,
 				}),
 			),
 		),

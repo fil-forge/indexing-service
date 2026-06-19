@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	crypto_ed25519 "crypto/ed25519"
 	"crypto/x509"
 	"encoding/json"
@@ -13,14 +12,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fil-forge/libforge/didresolver"
+	"github.com/fil-forge/libforge/identity"
 	"github.com/fil-forge/ucantone/did"
-	"github.com/fil-forge/ucantone/principal"
-	"github.com/fil-forge/ucantone/principal/ed25519"
-	"github.com/fil-forge/ucantone/principal/signer"
-	"github.com/fil-forge/ucantone/principal/verifier"
+	"github.com/fil-forge/ucantone/did/key"
+	"github.com/fil-forge/ucantone/did/resolver"
+	"github.com/fil-forge/ucantone/did/web"
+	"github.com/fil-forge/ucantone/multikey"
+	"github.com/fil-forge/ucantone/multikey/ed25519"
 	userver "github.com/fil-forge/ucantone/server"
-	"github.com/fil-forge/ucantone/ucan"
 	"github.com/fil-forge/ucantone/validator"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/ipni/go-libipni/maurl"
@@ -31,6 +30,7 @@ import (
 	goredis "github.com/redis/go-redis/v9"
 	"github.com/urfave/cli/v2"
 
+	"github.com/fil-forge/indexing-service/pkg/aws"
 	"github.com/fil-forge/indexing-service/pkg/construct"
 	"github.com/fil-forge/indexing-service/pkg/presets"
 	"github.com/fil-forge/indexing-service/pkg/redis"
@@ -124,38 +124,40 @@ var serverCmd = &cli.Command{
 				}
 
 				addr := fmt.Sprintf(":%d", cCtx.Int("port"))
-				var id principal.Signer
+				var idSigner multikey.Signer
 				var err error
 				var opts []server.Option
 
 				if cCtx.IsSet("key-file") {
 					// load from PEM file
-					id, err = signerFromPEMFile(cCtx.String("key-file"))
+					idSigner, err = signerFromPEMFile(cCtx.String("key-file"))
 					if err != nil {
 						return fmt.Errorf("loading key from PEM file: %w", err)
 					}
 				} else if cCtx.IsSet("private-key") {
-					id, err = ed25519.Parse(cCtx.String("private-key"))
+					idSigner, err = ed25519.Parse(cCtx.String("private-key"))
 					if err != nil {
 						return fmt.Errorf("parsing server private key: %w", err)
 					}
 				} else {
 					// generate a new private key if one is not provided
-					id, err = ed25519.Generate()
+					idSigner, err = ed25519.Generate()
 					if err != nil {
 						return fmt.Errorf("generating server private key: %w", err)
 					}
 				}
 
-				// wrap with custom DID if specified
+				id := identity.Identity{
+					Issuer: multikey.KeyIssuer(idSigner),
+				}
+				// use custom DID if specified
 				if cCtx.String("did") != "" {
 					customDID, err := did.Parse(cCtx.String("did"))
 					if err != nil {
 						return fmt.Errorf("parsing server DID: %w", err)
 					}
-					id, err = signer.Wrap(id, customDID)
-					if err != nil {
-						return fmt.Errorf("wrapping server DID: %w", err)
+					id = identity.Identity{
+						Issuer: multikey.NewIssuer(customDID, idSigner),
 					}
 				}
 
@@ -169,37 +171,39 @@ var serverCmd = &cli.Command{
 					// just the domain/path part
 					resolveDIDPatterns[i] = strings.TrimPrefix(d, "did:web:")
 				}
-				rslvOpts := []didresolver.Option{
-					didresolver.WithPatterns(resolveDIDPatterns...),
+				rslvOpts := []web.Option{
+					web.WithPatterns(resolveDIDPatterns...),
 				}
 				if cCtx.Bool("insecure-did-resolution") {
-					rslvOpts = append(rslvOpts, didresolver.InsecureResolution())
+					rslvOpts = append(rslvOpts, web.WithInsecure(true))
 				}
 
-				mapResolv, err := didresolver.NewMapResolver(presets.PrincipalMapping)
+				wellKnownResolv, err := aws.NewPrincipalMappingResolver(presets.PrincipalMapping)
 				if err != nil {
-					return fmt.Errorf("creating map resolver: %w", err)
+					return fmt.Errorf("creating principal mapping resolver: %w", err)
 				}
-				httpResolv, err := didresolver.NewHTTPResolver(rslvOpts...)
+
+				doc, err := id.DIDDocument()
+				if err != nil {
+					return fmt.Errorf("creating DID document: %w", err)
+				}
+				wellKnownResolv[id.DID()] = doc
+
+				httpResolv, err := web.NewResolver(rslvOpts...)
 				if err != nil {
 					return fmt.Errorf("creating HTTP resolver: %w", err)
 				}
-				cacheResolv, err := didresolver.NewCachedResolver(httpResolv.Resolve, time.Hour*3)
-				if err != nil {
-					return fmt.Errorf("creating cached HTTP resolver: %w", err)
-				}
-				selfResolv := didresolver.NewSelfResolver(id)
-				tierResolv := didresolver.NewTieredResolver(selfResolv.Resolve, mapResolv.Resolve, cacheResolv.Resolve)
 
 				opts = append(
 					opts,
 					server.WithContentClaimsOptions(
 						userver.WithValidationOptions(
-							validator.WithDIDVerifierResolvers(map[string]validator.DIDVerifierResolverFunc{
-								"key": func(ctx context.Context, did did.DID) (ucan.Verifier, error) {
-									return verifier.FromDIDKey(did)
+							validator.WithDIDResolver(resolver.ByMethod{
+								"key": key.Resolver,
+								"web": resolver.Tiered{
+									wellKnownResolv,
+									resolver.NewCached(httpResolv, time.Hour*3),
 								},
-								"web": tierResolv.Resolve,
 							}),
 						),
 					),
@@ -246,7 +250,7 @@ var serverCmd = &cli.Command{
 				// id.Raw() returns the 32-byte seed; libp2p's
 				// UnmarshalEd25519PrivateKey wants the 64-byte stdlib form
 				// (seed||pub). Expand via NewKeyFromSeed before handing over.
-				privKey, err := crypto.UnmarshalEd25519PrivateKey(crypto_ed25519.NewKeyFromSeed(id.Raw()))
+				privKey, err := crypto.UnmarshalEd25519PrivateKey(crypto_ed25519.NewKeyFromSeed(idSigner.Raw()))
 				if err != nil {
 					return fmt.Errorf("unmarshaling private key: %w", err)
 				}
@@ -297,7 +301,7 @@ func ipniOpts(ipniFormatPeerID string, ipniFormatEndpoint string) ([]server.Opti
 }
 
 // signerFromPEMFile loads an Ed25519 private key from a PEM file.
-func signerFromPEMFile(path string) (principal.Signer, error) {
+func signerFromPEMFile(path string) (multikey.Signer, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err

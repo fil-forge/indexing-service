@@ -103,7 +103,7 @@ func execute[T cbg.CBORUnmarshaler](
 	return ok, rcpt, nil
 }
 
-func (c *Client) PublishIndexClaim(ctx context.Context, issuer ucan.Signer, args assertcaps.IndexArguments, options ...invocation.Option) error {
+func (c *Client) PublishIndexClaim(ctx context.Context, issuer ucan.Issuer, args assertcaps.IndexArguments, options ...invocation.Option) error {
 	inv, err := assertcaps.Index.Invoke(issuer, c.servicePrincipal, &args, options...)
 	if err != nil {
 		return fmt.Errorf("generating invocation: %w", err)
@@ -112,7 +112,7 @@ func (c *Client) PublishIndexClaim(ctx context.Context, issuer ucan.Signer, args
 	return err
 }
 
-func (c *Client) PublishEqualsClaim(ctx context.Context, issuer ucan.Signer, args assertcaps.EqualsArguments, options ...invocation.Option) error {
+func (c *Client) PublishEqualsClaim(ctx context.Context, issuer ucan.Issuer, args assertcaps.EqualsArguments, options ...invocation.Option) error {
 	inv, err := assertcaps.Equals.Invoke(issuer, c.servicePrincipal, &args, options...)
 	if err != nil {
 		return fmt.Errorf("generating invocation: %w", err)
@@ -121,7 +121,7 @@ func (c *Client) PublishEqualsClaim(ctx context.Context, issuer ucan.Signer, arg
 	return err
 }
 
-func (c *Client) CacheClaim(ctx context.Context, issuer ucan.Signer, cacheClaim ucan.Invocation, provider claimcaps.Provider, options ...invocation.Option) error {
+func (c *Client) CacheClaim(ctx context.Context, issuer ucan.Issuer, cacheClaim ucan.Invocation, provider claimcaps.Provider, options ...invocation.Option) error {
 	inv, err := claimcaps.Cache.Invoke(issuer, c.servicePrincipal, &claimcaps.CacheArguments{
 		Claim:    cacheClaim.Link(),
 		Provider: provider,

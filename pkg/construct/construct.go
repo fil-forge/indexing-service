@@ -23,7 +23,7 @@ import (
 	"github.com/fil-forge/indexing-service/pkg/service/providerindex/remotesyncer"
 	"github.com/fil-forge/indexing-service/pkg/types"
 	"github.com/fil-forge/libforge/jobqueue"
-	"github.com/fil-forge/ucantone/principal"
+	"github.com/fil-forge/ucantone/multikey"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	dssync "github.com/ipfs/go-datastore/sync"
@@ -45,9 +45,9 @@ var contentClaimsNamespace = datastore.NewKey("claims/")
 
 // ServiceConfig sets specific config values for the service
 type ServiceConfig struct {
-	// ID configures the identity for the service. Both ID and PrivateKey are the
-	// same key, the difference is that ID may be wrapped as a did:web.
-	ID principal.Signer
+	// ID configures the identity for the service. Both ID and PrivateKey use the
+	// same key, the difference is that ID may be a did:web.
+	ID multikey.Issuer
 
 	// PrivateKey configures the private key for the service.
 	PrivateKey crypto.PrivKey

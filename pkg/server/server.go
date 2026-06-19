@@ -15,11 +15,11 @@ import (
 	"github.com/fil-forge/indexing-service/pkg/telemetry"
 	"github.com/fil-forge/indexing-service/pkg/types"
 	assertcaps "github.com/fil-forge/libforge/commands/assert"
+	"github.com/fil-forge/libforge/identity"
 	"github.com/fil-forge/libforge/ucan/retrieval"
 	"github.com/fil-forge/ucantone/did"
-	"github.com/fil-forge/ucantone/principal"
-	"github.com/fil-forge/ucantone/principal/ed25519"
-	"github.com/fil-forge/ucantone/principal/signer"
+	"github.com/fil-forge/ucantone/multikey"
+	"github.com/fil-forge/ucantone/multikey/ed25519"
 	"github.com/fil-forge/ucantone/server"
 	"github.com/fil-forge/ucantone/ucan"
 	"github.com/fil-forge/ucantone/ucan/container"
@@ -42,7 +42,7 @@ type ipniConfig struct {
 }
 
 type config struct {
-	id                   principal.Signer
+	id                   identity.Identity
 	contentClaimsOptions []server.HTTPOption
 	enableTelemetry      bool
 	ipniConfig           *ipniConfig
@@ -51,9 +51,9 @@ type config struct {
 type Option func(*config) error
 
 // WithIdentity specifies the server DID.
-func WithIdentity(s principal.Signer) Option {
+func WithIdentity(id identity.Identity) Option {
 	return func(c *config) error {
-		c.id = s
+		c.id = id
 		return nil
 	}
 }
@@ -113,20 +113,18 @@ func NewServer(indexer types.Service, opts ...Option) (*http.ServeMux, error) {
 		}
 	}
 
-	if c.id == nil {
+	if c.id.Issuer == nil {
 		log.Warn("Generating a server identity as one has not been set!")
-		id, err := ed25519.Generate()
+		signer, err := ed25519.Generate()
 		if err != nil {
 			return nil, fmt.Errorf("generating identity: %w", err)
 		}
-		c.id = id
+		c.id = identity.Identity{
+			Issuer: multikey.KeyIssuer(signer),
+		}
 	}
 
-	if s, ok := c.id.(signer.Unwrapper); ok {
-		log.Infof("Server ID: %s (%s)", c.id.DID(), s.Unwrap().DID())
-	} else {
-		log.Infof("Server ID: %s", c.id.DID())
-	}
+	log.Infof("Server ID: %s", c.id)
 
 	mux := http.NewServeMux()
 	maybeInstrumentAndAdd(mux, "GET /", GetRootHandler(c.id), c.enableTelemetry)
@@ -183,14 +181,11 @@ func withGzip(handler http.HandlerFunc) http.HandlerFunc {
 }
 
 // GetRootHandler displays version info when a GET request is sent to "/".
-func GetRootHandler(id principal.Signer) http.HandlerFunc {
+func GetRootHandler(id ucan.Issuer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(fmt.Sprintf("🔥 indexing-service %s\n", build.Version)))
 		w.Write([]byte("- https://github.com/fil-forge/indexing-service\n"))
-		w.Write([]byte(fmt.Sprintf("- %s\n", id.DID())))
-		if s, ok := id.(signer.Unwrapper); ok {
-			w.Write([]byte(fmt.Sprintf("- %s\n", s.Unwrap().DID())))
-		}
+		w.Write([]byte(fmt.Sprintf("- %s\n", id)))
 	}
 }
 
@@ -224,7 +219,7 @@ func GetClaimHandler(service types.Getter) http.HandlerFunc {
 
 // PostClaimsHandler invokes the ucanto service when a POST request is sent to
 // "/claims".
-func PostClaimsHandler(id principal.Signer, service types.Publisher, options ...server.HTTPOption) http.HandlerFunc {
+func PostClaimsHandler(id ucan.Issuer, service types.Publisher, options ...server.HTTPOption) http.HandlerFunc {
 	server, err := contentclaims.NewUCANServer(id, service, options...)
 	if err != nil {
 		log.Fatalf("creating ucanto server: %s", err)
@@ -402,51 +397,19 @@ func GetIPNICIDHandler(service types.Querier, config *ipniConfig) http.HandlerFu
 	}
 }
 
-// Document is a did document that describes a did subject.
-// See https://www.w3.org/TR/did-core/#dfn-did-documents.
-type Document struct {
-	Context            []string             `json:"@context"` // https://w3id.org/did/v1
-	ID                 string               `json:"id"`
-	Controller         []string             `json:"controller,omitempty"`
-	VerificationMethod []VerificationMethod `json:"verificationMethod,omitempty"`
-	Authentication     []string             `json:"authentication,omitempty"`
-	AssertionMethod    []string             `json:"assertionMethod,omitempty"`
-}
-
-// VerificationMethod describes how to authenticate or authorize interactions
-// with a did subject.
-// See https://www.w3.org/TR/did-core/#dfn-verification-method.
-type VerificationMethod struct {
-	ID                 string `json:"id,omitempty"`
-	Type               string `json:"type,omitempty"`
-	Controller         string `json:"controller,omitempty"`
-	PublicKeyMultibase string `json:"publicKeyMultibase,omitempty"`
-}
-
 // GetDIDDocument returns the DID document for did:web resolution.
-func GetDIDDocument(id principal.Signer) http.HandlerFunc {
-	doc := Document{
-		Context: []string{"https://w3id.org/did/v1"},
-		ID:      id.DID().String(),
-	}
-	if s, ok := id.(signer.Unwrapper); ok {
-		vid := fmt.Sprintf("%s#owner", id.DID())
-		doc.VerificationMethod = []VerificationMethod{
-			{
-				ID:                 vid,
-				Type:               "Ed25519VerificationKey2020",
-				Controller:         id.DID().String(),
-				PublicKeyMultibase: strings.TrimPrefix(s.Unwrap().DID().String(), "did:key:"),
-			},
-		}
-		doc.Authentication = []string{vid}
-		doc.AssertionMethod = []string{vid}
-	}
+func GetDIDDocument(issuer multikey.Issuer) http.HandlerFunc {
+	id := identity.Identity{Issuer: issuer}
 	return func(w http.ResponseWriter, r *http.Request) {
+		doc, err := id.DIDDocument()
+		if err != nil {
+			http.Error(w, fmt.Sprintf("getting DID document: %s", err), http.StatusInternalServerError)
+			return
+		}
 		w.Header().Add("Content-Type", "application/json")
 		bytes, err := json.Marshal(doc)
 		if err != nil {
-			http.Error(w, err.Error(), 500)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		w.Write(bytes)

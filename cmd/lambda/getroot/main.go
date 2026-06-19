@@ -12,7 +12,7 @@ func main() {
 }
 
 func makeHandler(cfg aws.Config) any {
-	handler := httpadapter.NewV2(server.GetRootHandler(cfg.Signer)).ProxyWithContext
+	handler := httpadapter.NewV2(server.GetRootHandler(cfg.Issuer)).ProxyWithContext
 
 	return handler
 }

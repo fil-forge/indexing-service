@@ -12,7 +12,7 @@ import (
 	"github.com/fil-forge/indexing-service/pkg/internal/testutil"
 	"github.com/fil-forge/indexing-service/pkg/service/contentclaims"
 	"github.com/fil-forge/ucantone/did"
-	"github.com/fil-forge/ucantone/principal/signer"
+	"github.com/fil-forge/ucantone/multikey"
 	"github.com/ipfs/go-datastore"
 	"github.com/stretchr/testify/require"
 )
@@ -41,8 +41,7 @@ func TestGetRootHandler(t *testing.T) {
 		didweb, err := did.Parse("did:web:example.org")
 		require.NoError(t, err)
 
-		s, err := signer.Wrap(testutil.Service, didweb)
-		require.NoError(t, err)
+		s := multikey.NewIssuer(didweb, testutil.Service)
 
 		svr := httptest.NewServer(GetRootHandler(s))
 		defer svr.Close()
@@ -55,7 +54,7 @@ func TestGetRootHandler(t *testing.T) {
 		require.NoError(t, err)
 
 		body := string(bytes)
-		require.Contains(t, body, testutil.Service.DID().String())
+		require.Contains(t, body, testutil.Service.Verifier().String())
 		require.Contains(t, body, didweb.String())
 	})
 }

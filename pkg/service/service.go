@@ -28,8 +28,7 @@ import (
 	"github.com/fil-forge/libforge/digestutil"
 	ucanlib "github.com/fil-forge/libforge/ucan"
 	"github.com/fil-forge/ucantone/did"
-	"github.com/fil-forge/ucantone/principal"
-	ed25519_verifier "github.com/fil-forge/ucantone/principal/ed25519/verifier"
+	ed25519_verifier "github.com/fil-forge/ucantone/multikey/ed25519/verifier"
 	"github.com/fil-forge/ucantone/ucan"
 	"github.com/fil-forge/ucantone/ucan/container"
 	"github.com/fil-forge/ucantone/validator"
@@ -56,7 +55,7 @@ var ErrUnrecognizedClaim = errors.New("unrecognized claim type")
 
 // IndexingService implements read/write logic for indexing data with IPNI, content claims, sharded dag indexes, and a cache layer
 type IndexingService struct {
-	id              ucan.Signer
+	id              ucan.Issuer
 	blobIndexLookup blobindexlookup.BlobIndexLookup
 	claims          contentclaims.Service
 	providerIndex   providerindex.ProviderIndex
@@ -468,7 +467,7 @@ func WithConcurrency(concurrency int) Option {
 }
 
 // NewIndexingService returns a new indexing service
-func NewIndexingService(id ucan.Signer, blobIndexLookup blobindexlookup.BlobIndexLookup, claims contentclaims.Service, publicAddrInfo peer.AddrInfo, providerIndex providerindex.ProviderIndex, options ...Option) *IndexingService {
+func NewIndexingService(id ucan.Issuer, blobIndexLookup blobindexlookup.BlobIndexLookup, claims contentclaims.Service, publicAddrInfo peer.AddrInfo, providerIndex providerindex.ProviderIndex, options ...Option) *IndexingService {
 	provider := peer.AddrInfo{ID: publicAddrInfo.ID}
 	for _, addr := range publicAddrInfo.Addrs {
 		claimSuffix, _ := multiaddr.NewMultiaddr("/http-path/" + url.PathEscape("claim/"+ClaimUrlPlaceholder))
@@ -558,7 +557,7 @@ func cacheLocationCommitment(ctx context.Context, claims contentclaims.Service, 
 	return nil
 }
 
-func Publish(ctx context.Context, id ucan.Signer, blobIndex blobindexlookup.BlobIndexLookup, claims contentclaims.Service, provIndex providerindex.ProviderIndex, provider peer.AddrInfo, claim ucan.Invocation, meta ucan.Container) error {
+func Publish(ctx context.Context, id ucan.Issuer, blobIndex blobindexlookup.BlobIndexLookup, claims contentclaims.Service, provIndex providerindex.ProviderIndex, provider peer.AddrInfo, claim ucan.Invocation, meta ucan.Container) error {
 	ctx, s := telemetry.StartSpan(ctx, "IndexingService.Publish")
 	defer s.End()
 
@@ -610,7 +609,7 @@ func publishEqualsClaim(ctx context.Context, claims contentclaims.Service, provI
 	return nil
 }
 
-func publishIndexClaim(ctx context.Context, id ucan.Signer, blobIndex blobindexlookup.BlobIndexLookup, claims contentclaims.Service, provIndex providerindex.ProviderIndex, provider peer.AddrInfo, claim ucan.Invocation, claimMeta ucan.Container) error {
+func publishIndexClaim(ctx context.Context, id ucan.Issuer, blobIndex blobindexlookup.BlobIndexLookup, claims contentclaims.Service, provIndex providerindex.ProviderIndex, provider peer.AddrInfo, claim ucan.Invocation, claimMeta ucan.Container) error {
 	var args assert.IndexArguments
 	if err := args.UnmarshalCBOR(bytes.NewReader(claim.ArgumentsBytes())); err != nil {
 		return fmt.Errorf("unmarshaling index claim arguments: %w", err)
@@ -676,7 +675,7 @@ func publishIndexClaim(ctx context.Context, id ucan.Signer, blobIndex blobindexl
 
 func fetchBlobIndex(
 	ctx context.Context,
-	id ucan.Signer,
+	id ucan.Issuer,
 	blobIndex blobindexlookup.BlobIndexLookup,
 	claims contentclaims.Service,
 	blobLink cid.Cid,
@@ -755,7 +754,7 @@ func fetchBlobIndex(
 		Range: &contentRange,
 		Auth: types.RetrievalAuth{
 			Issuer:   id,
-			Audience: aud.DID(),
+			Audience: aud,
 			Command:  content.Retrieve.Command,
 			Subject:  proofs[0].Subject(),
 			Arguments: &content.RetrieveArguments{
@@ -788,22 +787,22 @@ func validateLocationCommitment(ctx context.Context, claim ucan.Invocation) erro
 	return validator.ValidateInvocation(ctx, claim)
 }
 
-// peerToPrincipal converts a peer ID into a UCAN principal object. Currently
+// peerToPrincipal converts a peer ID into a `did:key:`. Currently
 // supports only ed25519 keys.
-func peerToPrincipal(peer peer.ID) (principal.Verifier, error) {
+func peerToPrincipal(peer peer.ID) (did.DID, error) {
 	pk, err := peer.ExtractPublicKey()
 	if err != nil {
-		return nil, fmt.Errorf("extracting public key from peer ID: %w", err)
+		return did.Undef, fmt.Errorf("extracting public key from peer ID: %w", err)
 	}
 	pubBytes, err := pk.Raw()
 	if err != nil {
-		return nil, fmt.Errorf("extracting raw bytes of public key: %w", err)
+		return did.Undef, fmt.Errorf("extracting raw bytes of public key: %w", err)
 	}
 	v, err := ed25519_verifier.FromRaw(pubBytes)
 	if err != nil {
-		return nil, fmt.Errorf("decoding raw ed25519 public key: %w", err)
+		return did.Undef, fmt.Errorf("decoding raw ed25519 public key: %w", err)
 	}
-	return v, nil
+	return v.KeyDID(), nil
 }
 
 // extractContentRetrieveDelegation extracts a `/content/retrieve`

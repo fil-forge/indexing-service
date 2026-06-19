@@ -223,7 +223,7 @@ type RetrievalRequest struct {
 // using UCAN authorization.
 type RetrievalAuth struct {
 	// The Indexing Service UCAN signing key.
-	Issuer ucan.Signer
+	Issuer ucan.Issuer
 	// Identity of the storage node to retrieve data from.
 	Audience did.DID
 	// Command for retrieval invocation.

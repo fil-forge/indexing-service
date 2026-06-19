@@ -12,6 +12,6 @@ func main() {
 }
 
 func makeHandler(cfg aws.Config) any {
-	handler := httpadapter.NewV2(server.GetDIDDocument(cfg.Signer)).ProxyWithContext
+	handler := httpadapter.NewV2(server.GetDIDDocument(cfg.Issuer)).ProxyWithContext
 	return handler
 }

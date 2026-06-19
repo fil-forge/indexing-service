@@ -47,6 +47,7 @@ var (
 	RandomCID       = testutil.RandomCID
 	RandomMultihash = testutil.RandomMultihash
 	RandomSigner    = testutil.RandomSigner
+	RandomIssuer    = testutil.RandomIssuer
 )
 
 func Must[T any](val T, err error) func(*testing.T) T { return testutil.Must(val, err) }
@@ -103,9 +104,9 @@ func RandomCAR(t *testing.T, size int) (cid.Cid, mh.Multihash, []byte) {
 // (issuer == subject == a freshly-generated signer).
 func RandomLocationCommitment(t *testing.T) ucan.Invocation {
 	t.Helper()
-	s := testutil.RandomSigner(t)
-	return Must(assertcaps.Location.Invoke(s, s.DID(), &assertcaps.LocationArguments{
-		Space:    s.DID(),
+	i := testutil.RandomIssuer(t)
+	return Must(assertcaps.Location.Invoke(i, i.DID(), &assertcaps.LocationArguments{
+		Space:    i.DID(),
 		Content:  RandomMultihash(t),
 		Location: []commands.CborURL{commands.CborURL(*TestURL)},
 	}))(t)
@@ -114,8 +115,8 @@ func RandomLocationCommitment(t *testing.T) ucan.Invocation {
 // RandomIndexClaim creates a self-signed /assert/index invocation.
 func RandomIndexClaim(t *testing.T) ucan.Invocation {
 	t.Helper()
-	s := testutil.RandomSigner(t)
-	inv, err := assertcaps.Index.Invoke(s, s.DID(), &assertcaps.IndexArguments{
+	i := testutil.RandomIssuer(t)
+	inv, err := assertcaps.Index.Invoke(i, i.DID(), &assertcaps.IndexArguments{
 		Index: RandomCID(t),
 	})
 	require.NoError(t, err)
@@ -125,8 +126,8 @@ func RandomIndexClaim(t *testing.T) ucan.Invocation {
 // RandomEqualsClaim creates a self-signed /assert/equals invocation.
 func RandomEqualsClaim(t *testing.T) ucan.Invocation {
 	t.Helper()
-	s := testutil.RandomSigner(t)
-	inv, err := assertcaps.Equals.Invoke(s, s.DID(), &assertcaps.EqualsArguments{
+	i := testutil.RandomIssuer(t)
+	inv, err := assertcaps.Equals.Invoke(i, i.DID(), &assertcaps.EqualsArguments{
 		Content: RandomMultihash(t),
 		Equals:  RandomCID(t),
 	})

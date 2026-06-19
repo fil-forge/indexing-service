@@ -18,12 +18,9 @@ import (
 
 func TestBuildCompressed(t *testing.T) {
 	t.Run("compresses with matching index entry", func(t *testing.T) {
-		principal := testutil.RandomSigner(t)
-
+		principal := testutil.RandomIssuer(t)
 		targetMh := testutil.RandomMultihash(t)
-
 		index := blobindex.NewShardedDagIndex(1)
-
 		shardMh := testutil.RandomMultihash(t)
 
 		targetRange := blobindex.Range{Start: 100, End: 149}
@@ -114,12 +111,9 @@ func TestBuildCompressed(t *testing.T) {
 	})
 
 	t.Run("doesn't fail when matching location claim doesn't have a range", func(t *testing.T) {
-		principal := testutil.RandomSigner(t)
-
+		principal := testutil.RandomIssuer(t)
 		targetMh := testutil.RandomMultihash(t)
-
 		index := blobindex.NewShardedDagIndex(1)
-
 		shardMh := testutil.RandomMultihash(t)
 
 		targetRange := blobindex.Range{Start: 100, End: 149}
@@ -186,10 +180,8 @@ func TestBuildCompressed(t *testing.T) {
 	})
 
 	t.Run("returns regular result when no matching index entry", func(t *testing.T) {
-		principal := testutil.RandomSigner(t)
-
+		principal := testutil.RandomIssuer(t)
 		targetMh := testutil.RandomMultihash(t)
-
 		index := blobindex.NewShardedDagIndex(1)
 
 		shardMh := testutil.RandomMultihash(t)
@@ -225,7 +217,7 @@ func TestBuildCompressed(t *testing.T) {
 	})
 
 	t.Run("returns regular result when no indexes", func(t *testing.T) {
-		principal := testutil.RandomSigner(t)
+		principal := testutil.RandomIssuer(t)
 		targetMh := testutil.RandomMultihash(t)
 
 		locationClaim := testutil.RandomLocationCommitment(t)
