@@ -19,8 +19,8 @@ require (
 	github.com/fil-forge/automobile v0.0.1
 	github.com/fil-forge/go-ipni-tools v0.0.0-20260519194815-545b9421aec0
 	github.com/fil-forge/go-libstoracha v0.0.0-20260507180245-218ac18ff773
-	github.com/fil-forge/libforge v0.0.0-20260527182359-ebb22552c348
-	github.com/fil-forge/ucantone v0.0.0-20260522152152-eda937bc2684
+	github.com/fil-forge/libforge v0.0.0-20260619083649-eb26d871cda1
+	github.com/fil-forge/ucantone v0.0.0-20260619013642-7985ec010b88
 	github.com/getsentry/sentry-go v0.35.1
 	github.com/google/uuid v1.6.0
 	github.com/ipfs/go-cid v0.6.1
@@ -93,7 +93,6 @@ require (
 	github.com/ebitengine/purego v0.10.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fil-forge/go-ucanto v0.0.0-20260507172450-5cb5d073f8ab // indirect
-	github.com/filecoin-project/go-state-types v0.18.0 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
@@ -104,6 +103,7 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.28.0 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/ipfs/boxo v0.37.0 // indirect
+	github.com/ipfs/go-ipld-cbor v0.2.1 // indirect
 	github.com/ipld/go-car v0.6.3 // indirect
 	github.com/klauspost/compress v1.18.5 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
@@ -135,6 +135,7 @@ require (
 	github.com/onsi/gomega v1.37.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.1 // indirect
+	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
 	github.com/pion/webrtc/v4 v4.1.4 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/polydawn/refmt v0.89.1-0.20231129105047-37766d95467a // indirect
@@ -152,8 +153,6 @@ require (
 	github.com/tklauser/numcpus v0.11.0 // indirect
 	github.com/xrash/smetrics v0.0.0-20250705151800-55b8f293f342 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
-	gitlab.com/yawning/secp256k1-voi v0.0.0-20230925100816-f2616030848b // indirect
-	gitlab.com/yawning/tuplehash v0.0.0-20230713102510-df83abbf9a02 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.43.0 // indirect
 	go.opentelemetry.io/otel/metric v1.43.0 // indirect
