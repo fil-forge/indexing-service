@@ -60,7 +60,6 @@ var awsCmd = &cli.Command{
 		if err != nil {
 			return fmt.Errorf("creating HTTP resolver: %w", err)
 		}
-		cacheResolv := resolver.NewCached(httpResolv, time.Hour*3)
 
 		srvOpts = append(
 			srvOpts,
@@ -68,7 +67,10 @@ var awsCmd = &cli.Command{
 				userver.WithValidationOptions(
 					validator.WithDIDResolver(resolver.ByMethod{
 						"key": key.Resolver,
-						"web": resolver.Tiered{wellKnownResolv, cacheResolv},
+						"web": resolver.Tiered{
+							wellKnownResolv,
+							resolver.NewCached(httpResolv, time.Hour*3),
+						},
 					}),
 				),
 			),

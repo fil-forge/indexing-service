@@ -42,7 +42,6 @@ func makeHandler(cfg aws.Config) any {
 	if err != nil {
 		return fmt.Errorf("creating HTTP resolver: %w", err)
 	}
-	cacheResolv := resolver.NewCached(httpResolv, time.Hour*3)
 
 	handler := httpadapter.NewV2(
 		server.PostClaimsHandler(
@@ -51,7 +50,10 @@ func makeHandler(cfg aws.Config) any {
 			ucanserver.WithValidationOptions(
 				validator.WithDIDResolver(resolver.ByMethod{
 					"key": key.Resolver,
-					"web": resolver.Tiered{wellKnownResolv, cacheResolv},
+					"web": resolver.Tiered{
+						wellKnownResolv,
+						resolver.NewCached(httpResolv, time.Hour*3),
+					},
 				}),
 			),
 		),

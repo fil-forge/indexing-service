@@ -193,7 +193,6 @@ var serverCmd = &cli.Command{
 				if err != nil {
 					return fmt.Errorf("creating HTTP resolver: %w", err)
 				}
-				cacheResolv := resolver.NewCached(httpResolv, time.Hour*3)
 
 				opts = append(
 					opts,
@@ -201,7 +200,10 @@ var serverCmd = &cli.Command{
 						userver.WithValidationOptions(
 							validator.WithDIDResolver(resolver.ByMethod{
 								"key": key.Resolver,
-								"web": resolver.Tiered{wellKnownResolv, cacheResolv},
+								"web": resolver.Tiered{
+									wellKnownResolv,
+									resolver.NewCached(httpResolv, time.Hour*3),
+								},
 							}),
 						),
 					),
