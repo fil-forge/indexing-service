@@ -3,7 +3,7 @@ module github.com/fil-forge/indexing-service
 go 1.25.7
 
 require (
-	github.com/alanshaw/dag-json-gen v0.0.6
+	github.com/alanshaw/dag-json-gen v0.0.8
 	github.com/aws/aws-lambda-go v1.49.0
 	github.com/aws/aws-sdk-go-v2 v1.41.7
 	github.com/aws/aws-sdk-go-v2/config v1.32.12
@@ -19,8 +19,8 @@ require (
 	github.com/fil-forge/automobile v0.0.1
 	github.com/fil-forge/go-ipni-tools v0.0.0-20260519194815-545b9421aec0
 	github.com/fil-forge/go-libstoracha v0.0.0-20260507180245-218ac18ff773
-	github.com/fil-forge/libforge v0.0.0-20260619083649-eb26d871cda1
-	github.com/fil-forge/ucantone v0.0.0-20260619013642-7985ec010b88
+	github.com/fil-forge/libforge v0.0.0-20260630210927-2b55dbcf944f
+	github.com/fil-forge/ucantone v0.0.0-20260630103048-a8f24fe31eb6
 	github.com/getsentry/sentry-go v0.35.1
 	github.com/google/uuid v1.6.0
 	github.com/ipfs/go-cid v0.6.1
@@ -172,5 +172,5 @@ require (
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	lukechampine.com/blake3 v1.4.1 // indirect
-	pitr.ca/jsontokenizer v0.3.0 // indirect
+	pitr.ca/jsontokenizer v0.3.2 // indirect
 )
