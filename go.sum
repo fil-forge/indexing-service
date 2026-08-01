@@ -205,8 +205,8 @@ github.com/ipfs/go-datastore v0.9.2 h1:HJOgAmvWPRMHiwD8JHBzGZQNTKhuFGYfp8bNPwye2
 github.com/ipfs/go-datastore v0.9.2/go.mod h1:VIjDxnINIcCqBMaB8LGggHfYY7PalKWfPtRMFeOU4q4=
 github.com/ipfs/go-detect-race v0.0.1 h1:qX/xay2W3E4Q1U7d9lNs1sU9nvguX0a7319XbyQ6cOk=
 github.com/ipfs/go-detect-race v0.0.1/go.mod h1:8BNT7shDZPo99Q74BpGMK+4D8Mn4j46UU0LZ723meps=
-github.com/ipfs/go-ds-flatfs v0.5.5 h1:lkx5C99pFBMI7T1sYF7y3v7xIYekNVNMp/95Gm9Y3tY=
-github.com/ipfs/go-ds-flatfs v0.5.5/go.mod h1:bM7+m7KFUyv5dp3RBKTr3+OHgZ6h8ydCQkO7tjeO9Z4=
+github.com/ipfs/go-ds-flatfs v0.6.1 h1:oiC+iZPwlnsyNXHZuAZ/Ka2btw00s43pk80gIDWEcJM=
+github.com/ipfs/go-ds-flatfs v0.6.1/go.mod h1:EddbXjWrzX39gCc6xn/HYGluTx3SmEy84KuWIVdApIs=
 github.com/ipfs/go-dsqueue v0.2.0 h1:MBi9w3oSiX98Xc+Y7NuJ9G8MI6mAT4IGdO9dHEMCZzU=
 github.com/ipfs/go-dsqueue v0.2.0/go.mod h1:8FfNQC4DMF/KkzBXRNB9Rb3MKDW0Sh98HMtXYl1mLQE=
 github.com/ipfs/go-ipld-cbor v0.2.1 h1:H05yEJbK/hxg0uf2AJhyerBDbjOuHX4yi+1U/ogRa7E=
