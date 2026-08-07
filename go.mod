@@ -21,7 +21,7 @@ require (
 	github.com/fil-forge/go-libstoracha v0.0.0-20260507180245-218ac18ff773
 	github.com/fil-forge/libforge v0.0.0-20260630210927-2b55dbcf944f
 	github.com/fil-forge/ucantone v0.0.0-20260630103048-a8f24fe31eb6
-	github.com/getsentry/sentry-go v0.35.1
+	github.com/getsentry/sentry-go v0.48.0
 	github.com/google/uuid v1.6.0
 	github.com/ipfs/go-cid v0.6.2
 	github.com/ipfs/go-datastore v0.9.2
