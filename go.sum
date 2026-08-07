@@ -479,8 +479,8 @@ gitlab.com/yawning/tuplehash v0.0.0-20230713102510-df83abbf9a02 h1:qwDnMxjkyLmAF
 gitlab.com/yawning/tuplehash v0.0.0-20230713102510-df83abbf9a02/go.mod h1:JTnUj0mpYiAsuZLmKjTx/ex3AtMowcCgnE7YNyCEP0I=
 go.opentelemetry.io/auto/sdk v1.2.1 h1:jXsnJ4Lmnqd11kwkBV2LgLoFMZKizbCi5fNZ/ipaZ64=
 go.opentelemetry.io/auto/sdk v1.2.1/go.mod h1:KRTj+aOaElaLi+wW1kO/DZRXwkF4C5xPbEe3ZiIhN7Y=
-go.opentelemetry.io/contrib/detectors/aws/ecs v1.37.0 h1:6xeEle8g8uJJlrM2hj7fE/Pk50ipy1BvHnxtmLsUW64=
-go.opentelemetry.io/contrib/detectors/aws/ecs v1.37.0/go.mod h1:SxdZgBsLlO2Poz1FBp6zKgFrvDh+CSqsZMUOUoa2PGw=
+go.opentelemetry.io/contrib/detectors/aws/ecs v1.44.0 h1:n3ZJsAFfT+/Pe2OZNFInit2Ifr/IKWdSwm9bF0Tjh8c=
+go.opentelemetry.io/contrib/detectors/aws/ecs v1.44.0/go.mod h1:vVDKrckIormv1fveancgdDjDVvLro+LE6z04PCGa2Ag=
 go.opentelemetry.io/contrib/detectors/aws/lambda v0.69.0 h1:yjkgZamA0xSsEbgkSTkRxOJYO+wZdHAMNadcqB7qlxE=
 go.opentelemetry.io/contrib/detectors/aws/lambda v0.69.0/go.mod h1:QKsfkXDTTedq1i6+xHBnn/GsYEv4shmB5twWOd5yqjo=
 go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-lambda-go/otellambda v0.69.0 h1:h19qNWGN27CJURJvgu9TSLRGoc6V3hHpYhz/TLGf9wI=
