@@ -39,7 +39,7 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.44.0
 	github.com/testcontainers/testcontainers-go/modules/minio v0.44.0
-	github.com/testcontainers/testcontainers-go/modules/valkey v0.39.0
+	github.com/testcontainers/testcontainers-go/modules/valkey v0.44.0
 	github.com/urfave/cli/v2 v2.27.7
 	github.com/whyrusleeping/cbor-gen v0.3.1
 	go.opentelemetry.io/contrib/detectors/aws/ecs v1.44.0
