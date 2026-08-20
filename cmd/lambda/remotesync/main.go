@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/fil-forge/go-ipni-tools/pkg/metadata"
 	"github.com/fil-forge/go-ipni-tools/pkg/store"
-	"github.com/fil-forge/go-libstoracha/metadata"
 	"github.com/fil-forge/indexing-service/cmd/lambda"
 	"github.com/fil-forge/indexing-service/pkg/aws"
 	"github.com/fil-forge/indexing-service/pkg/redis"
