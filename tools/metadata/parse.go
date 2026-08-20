@@ -25,7 +25,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/fil-forge/go-libstoracha/metadata"
+	"github.com/fil-forge/go-ipni-tools/pkg/metadata"
 	"github.com/multiformats/go-multicodec"
 )
 
