@@ -87,10 +87,6 @@ Capabilities handled:
 - `claim/cache` (`libforge/commands/claim.Cache`) — cache a claim from a storage node,
   keyed to the provider peer derived from the invocation issuer's did:key
 
-Note: `go-libstoracha` remains a dependency only in the query CLI (`cmd/query.go`),
-the remotesync Lambda, and `tools/metadata/parse.go` — do not use it for new
-capability work; use libforge/ucantone.
-
 ## Key integrations
 
 - **IPNI**: `github.com/ipni/go-libipni` (find/model, maurl) plus

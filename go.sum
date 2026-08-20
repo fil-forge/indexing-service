@@ -124,12 +124,8 @@ github.com/felixge/httpsnoop v1.1.0 h1:3YtUj32ZZkqZtt3sZZsClsymw/QDuVfpNhoA31zeO
 github.com/felixge/httpsnoop v1.1.0/go.mod h1:Zqxgdd+1Rkcz8euOqdr7lqgCRJztwr5hp9vDSi5UZCE=
 github.com/fil-forge/automobile v0.0.1 h1:9xB3yc4l5b9EdRJSJcNwudgBFNHoMPEAdcb7GfobLhA=
 github.com/fil-forge/automobile v0.0.1/go.mod h1:TsO7jlO8ykJZY5tF8j4GsUcu3F02lEzxO7ULoB61hRA=
-github.com/fil-forge/go-ipni-tools v0.0.0-20260820094424-9b93692d1895 h1:xO7BgzrPWbBAFeIKD9EGfOWGPxX6phGHcySSepLLo1U=
-github.com/fil-forge/go-ipni-tools v0.0.0-20260820094424-9b93692d1895/go.mod h1:kJuOyZgOlRPaiYd3s/U8D5xnJ5FRdkH+vzdSuzTK+2I=
-github.com/fil-forge/go-libstoracha v0.0.0-20260507180245-218ac18ff773 h1:MUBpVnBX9Eql6rBV/f6xKDz/Wm0zICsrcIWWGNH5XeM=
-github.com/fil-forge/go-libstoracha v0.0.0-20260507180245-218ac18ff773/go.mod h1:zE7vPrAYZpoamvIFOtcZvfrWXRi6jyvS5O4o04+X1HE=
-github.com/fil-forge/go-ucanto v0.0.0-20260507172450-5cb5d073f8ab h1:2J2cDThqTKP6/0k3SfdlSxfyPa3aLqjTYnmvbEcryfg=
-github.com/fil-forge/go-ucanto v0.0.0-20260507172450-5cb5d073f8ab/go.mod h1:lZF3UXZ2hGLKYmXdquG50JqI9pRlUrV6lubGtgOYfwc=
+github.com/fil-forge/go-ipni-tools v0.0.0-20260820150418-78ca0c16834d h1:iEXJC5aJgRHq2iM4X6usfow436OQGauLjDuga1Hiq4o=
+github.com/fil-forge/go-ipni-tools v0.0.0-20260820150418-78ca0c16834d/go.mod h1:fwLjqz34DvfoWcuzyH8Wr7dTJdr3mzYjxZRweysHOH4=
 github.com/fil-forge/libforge v0.0.0-20260807225550-3e6895b41be5 h1:Pu7Xk/LdaQyv1560k1MbL6CQUdWxZJIG9elEE0vkgLY=
 github.com/fil-forge/libforge v0.0.0-20260807225550-3e6895b41be5/go.mod h1:aL/KcXZ0KVs1ymAYqIwQyCnl2p481InN+gYbRLNM8fI=
 github.com/fil-forge/ucantone v0.0.0-20260817170631-3a20cd59fabc h1:s6QNgj3hWY2neeAWyq2FckpQoTaRZhK2utgLkauGsqA=

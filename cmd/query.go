@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/fil-forge/go-libstoracha/digestutil"
 	"github.com/fil-forge/libforge/blobindex"
 	assertcaps "github.com/fil-forge/libforge/commands/assert"
+	"github.com/fil-forge/libforge/digestutil"
 	"github.com/fil-forge/ucantone/did"
 	"github.com/fil-forge/ucantone/ucan"
 	"github.com/fil-forge/ucantone/ucan/container"
