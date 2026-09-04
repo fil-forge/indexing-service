@@ -41,7 +41,7 @@ require (
 	github.com/testcontainers/testcontainers-go/modules/valkey v0.44.0
 	github.com/urfave/cli/v2 v2.27.7
 	github.com/whyrusleeping/cbor-gen v0.3.1
-	go.opentelemetry.io/contrib/detectors/aws/ecs v1.45.0
+	go.opentelemetry.io/contrib/detectors/aws/ecs v1.46.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-lambda-go/otellambda v0.71.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.71.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.70.0
