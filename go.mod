@@ -5,7 +5,7 @@ go 1.25.7
 require (
 	github.com/alanshaw/dag-json-gen v0.0.9
 	github.com/aws/aws-lambda-go v1.54.0
-	github.com/aws/aws-sdk-go-v2 v1.45.1
+	github.com/aws/aws-sdk-go-v2 v1.46.0
 	github.com/aws/aws-sdk-go-v2/config v1.33.2
 	github.com/aws/aws-sdk-go-v2/credentials v1.20.2
 	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.21.2
