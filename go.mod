@@ -20,7 +20,7 @@ require (
 	github.com/fil-forge/go-ipni-tools v0.0.0-20260820150418-78ca0c16834d
 	github.com/fil-forge/libforge v0.0.0-20260807225550-3e6895b41be5
 	github.com/fil-forge/ucantone v0.0.0-20260817170631-3a20cd59fabc
-	github.com/getsentry/sentry-go v0.48.0
+	github.com/getsentry/sentry-go v0.49.0
 	github.com/google/uuid v1.6.0
 	github.com/ipfs/go-cid v0.6.2
 	github.com/ipfs/go-datastore v0.9.2
