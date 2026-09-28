@@ -87,6 +87,15 @@ Capabilities handled:
 - `claim/cache` (`libforge/commands/claim.Cache`) — cache a claim from a storage node,
   keyed to the provider peer derived from the invocation issuer's did:key
 
+Route authorization (`ucanservice.go`): `assert/equals` and `claim/cache` are
+served behind ucantone's `middleware.NotSelfSigned()` + `OnlySubject(serviceDID)`,
+so a claim must be subjected to this service and issued by someone holding a
+delegation from it — `claim/cache` names the provider from the issuer, so a
+self-signed one would let anyone claim to serve another node's content.
+`assert/index` is exempt: the upload service invokes it self-signed over itself,
+and what authorizes it is the retrieval delegation chain in the invocation
+metadata. A new capability goes behind the checks unless it has that shape.
+
 ## Key integrations
 
 - **IPNI**: `github.com/ipni/go-libipni` (find/model, maurl) plus

@@ -43,11 +43,22 @@ func TestClient(t *testing.T) {
 	t.Cleanup(indexingUCANServer.Close)
 	indexingURL := *testutil.Must(url.Parse(indexingUCANServer.URL))(t)
 
-	// Self-signed invocations: use the indexing service signer as the issuer
-	// so the server-side validator accepts them without a delegation chain.
-	storageID := indexingID
+	// The storage node delivering claims: /claim/cache is served behind the
+	// subject checks, so it invokes over the service with the service's own
+	// delegation as its proof. /assert/index is accepted self-signed, so alice
+	// needs none.
+	storageID := testutil.Alice
 	storageURL := indexingURL
-	alice := indexingID
+	alice := testutil.Bob
+
+	cacheProof := testutil.Must(claimcaps.Cache.Delegate(
+		indexingID, storageID.DID(), indexingID.DID(),
+	))(t)
+	// The client always subjects a claim to the service, so alice presents a
+	// delegation rather than relying on /assert/index being self-signable.
+	indexProof := testutil.Must(assertcaps.Index.Delegate(
+		indexingID, alice.DID(), indexingID.DID(),
+	))(t)
 
 	contentDigest := testutil.RandomMultihash(t)
 	indexCID := testutil.RandomCID(t)
@@ -75,7 +86,7 @@ func TestClient(t *testing.T) {
 		c, err := New(indexingID.DID(), indexingURL)
 		require.NoError(t, err)
 
-		err = c.CacheClaim(context.Background(), storageID, locationClaim, provider)
+		err = c.CacheClaim(context.Background(), storageID, locationClaim, provider, []ucan.Delegation{cacheProof})
 		require.NoError(t, err)
 
 		require.NotEmpty(t, indexer.cached)
@@ -91,6 +102,7 @@ func TestClient(t *testing.T) {
 			context.Background(),
 			alice,
 			assertcaps.IndexArguments{Index: indexCID},
+			[]ucan.Delegation{indexProof},
 		)
 		require.NoError(t, err)
 

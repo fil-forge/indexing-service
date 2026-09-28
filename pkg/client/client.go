@@ -29,6 +29,7 @@ import (
 	"github.com/fil-forge/ucantone/ucan"
 	"github.com/fil-forge/ucantone/ucan/container"
 	"github.com/fil-forge/ucantone/ucan/invocation"
+	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 )
 
@@ -103,34 +104,58 @@ func execute[T cbg.CBORUnmarshaler](
 	return ok, rcpt, nil
 }
 
-func (c *Client) PublishIndexClaim(ctx context.Context, issuer ucan.Issuer, args assertcaps.IndexArguments, options ...invocation.Option) error {
-	inv, err := assertcaps.Index.Invoke(issuer, c.servicePrincipal, &args, options...)
+// PublishIndexClaim publishes an index claim. The service accepts this one
+// self-signed, so proofs may be nil.
+func (c *Client) PublishIndexClaim(ctx context.Context, issuer ucan.Issuer, args assertcaps.IndexArguments, proofs []ucan.Delegation, options ...invocation.Option) error {
+	inv, err := assertcaps.Index.Invoke(issuer, c.servicePrincipal, &args, withProofs(proofs, options)...)
 	if err != nil {
 		return fmt.Errorf("generating invocation: %w", err)
 	}
-	_, _, err = execute[*assertcaps.IndexOK](ctx, c.client, inv)
+	_, _, err = execute[*assertcaps.IndexOK](ctx, c.client, inv, execution.WithDelegations(proofs...))
 	return err
 }
 
-func (c *Client) PublishEqualsClaim(ctx context.Context, issuer ucan.Issuer, args assertcaps.EqualsArguments, options ...invocation.Option) error {
-	inv, err := assertcaps.Equals.Invoke(issuer, c.servicePrincipal, &args, options...)
+// PublishEqualsClaim publishes an equals claim. The service serves it behind
+// the subject checks, so proofs must carry the delegation authorizing the
+// issuer to invoke it over the service.
+func (c *Client) PublishEqualsClaim(ctx context.Context, issuer ucan.Issuer, args assertcaps.EqualsArguments, proofs []ucan.Delegation, options ...invocation.Option) error {
+	inv, err := assertcaps.Equals.Invoke(issuer, c.servicePrincipal, &args, withProofs(proofs, options)...)
 	if err != nil {
 		return fmt.Errorf("generating invocation: %w", err)
 	}
-	_, _, err = execute[*assertcaps.EqualsOK](ctx, c.client, inv)
+	_, _, err = execute[*assertcaps.EqualsOK](ctx, c.client, inv, execution.WithDelegations(proofs...))
 	return err
 }
 
-func (c *Client) CacheClaim(ctx context.Context, issuer ucan.Issuer, cacheClaim ucan.Invocation, provider claimcaps.Provider, options ...invocation.Option) error {
+// CacheClaim asks the service to cache a claim on behalf of a provider. The
+// service serves it behind the subject checks, so proofs must carry the
+// delegation authorizing the issuer to invoke it over the service.
+func (c *Client) CacheClaim(ctx context.Context, issuer ucan.Issuer, cacheClaim ucan.Invocation, provider claimcaps.Provider, proofs []ucan.Delegation, options ...invocation.Option) error {
 	inv, err := claimcaps.Cache.Invoke(issuer, c.servicePrincipal, &claimcaps.CacheArguments{
 		Claim:    cacheClaim.Link(),
 		Provider: provider,
-	}, options...)
+	}, withProofs(proofs, options)...)
 	if err != nil {
 		return fmt.Errorf("generating invocation: %w", err)
 	}
-	_, _, err = execute[*claimcaps.CacheOK](ctx, c.client, inv, execution.WithInvocations(cacheClaim))
+	_, _, err = execute[*claimcaps.CacheOK](ctx, c.client, inv,
+		execution.WithInvocations(cacheClaim),
+		execution.WithDelegations(proofs...),
+	)
 	return err
+}
+
+// withProofs links the proofs to the invocation being built. Their envelopes
+// travel in the request container, which is where the server resolves them.
+func withProofs(proofs []ucan.Delegation, options []invocation.Option) []invocation.Option {
+	if len(proofs) == 0 {
+		return options
+	}
+	links := make([]cid.Cid, 0, len(proofs))
+	for _, p := range proofs {
+		links = append(links, p.Link())
+	}
+	return append(options, invocation.WithProofs(links...))
 }
 
 func (c *Client) QueryClaims(ctx context.Context, query types.Query) (types.QueryResult, error) {
