@@ -29,6 +29,7 @@ import (
 	"github.com/fil-forge/ucantone/ucan"
 	"github.com/fil-forge/ucantone/ucan/container"
 	"github.com/fil-forge/ucantone/ucan/invocation"
+	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 )
 
@@ -103,34 +104,89 @@ func execute[T cbg.CBORUnmarshaler](
 	return ok, rcpt, nil
 }
 
-func (c *Client) PublishIndexClaim(ctx context.Context, issuer ucan.Issuer, args assertcaps.IndexArguments, options ...invocation.Option) error {
-	inv, err := assertcaps.Index.Invoke(issuer, c.servicePrincipal, &args, options...)
+// PublishIndexClaim publishes an index claim. The service accepts this one
+// self-signed, so it needs no proofs when the issuer is the service itself.
+func (c *Client) PublishIndexClaim(ctx context.Context, issuer ucan.Issuer, args assertcaps.IndexArguments, options ...CallOption) error {
+	cfg := newCallConfig(options)
+	inv, err := assertcaps.Index.Invoke(issuer, c.servicePrincipal, &args, cfg.invocationOptions()...)
 	if err != nil {
 		return fmt.Errorf("generating invocation: %w", err)
 	}
-	_, _, err = execute[*assertcaps.IndexOK](ctx, c.client, inv)
+	_, _, err = execute[*assertcaps.IndexOK](ctx, c.client, inv, execution.WithDelegations(cfg.proofs...))
 	return err
 }
 
-func (c *Client) PublishEqualsClaim(ctx context.Context, issuer ucan.Issuer, args assertcaps.EqualsArguments, options ...invocation.Option) error {
-	inv, err := assertcaps.Equals.Invoke(issuer, c.servicePrincipal, &args, options...)
+// PublishEqualsClaim publishes an equals claim. The service serves it behind
+// the subject checks, so [WithProofs] must carry the delegation authorizing the
+// issuer to invoke it over the service.
+func (c *Client) PublishEqualsClaim(ctx context.Context, issuer ucan.Issuer, args assertcaps.EqualsArguments, options ...CallOption) error {
+	cfg := newCallConfig(options)
+	inv, err := assertcaps.Equals.Invoke(issuer, c.servicePrincipal, &args, cfg.invocationOptions()...)
 	if err != nil {
 		return fmt.Errorf("generating invocation: %w", err)
 	}
-	_, _, err = execute[*assertcaps.EqualsOK](ctx, c.client, inv)
+	_, _, err = execute[*assertcaps.EqualsOK](ctx, c.client, inv, execution.WithDelegations(cfg.proofs...))
 	return err
 }
 
-func (c *Client) CacheClaim(ctx context.Context, issuer ucan.Issuer, cacheClaim ucan.Invocation, provider claimcaps.Provider, options ...invocation.Option) error {
+// CacheClaim asks the service to cache a claim on behalf of a provider. The
+// service serves it behind the subject checks, so proofs must carry the
+// delegation authorizing the issuer to invoke it over the service.
+func (c *Client) CacheClaim(ctx context.Context, issuer ucan.Issuer, cacheClaim ucan.Invocation, provider claimcaps.Provider, options ...CallOption) error {
+	cfg := newCallConfig(options)
 	inv, err := claimcaps.Cache.Invoke(issuer, c.servicePrincipal, &claimcaps.CacheArguments{
 		Claim:    cacheClaim.Link(),
 		Provider: provider,
-	}, options...)
+	}, cfg.invocationOptions()...)
 	if err != nil {
 		return fmt.Errorf("generating invocation: %w", err)
 	}
-	_, _, err = execute[*claimcaps.CacheOK](ctx, c.client, inv, execution.WithInvocations(cacheClaim))
+	_, _, err = execute[*claimcaps.CacheOK](ctx, c.client, inv,
+		execution.WithInvocations(cacheClaim),
+		execution.WithDelegations(cfg.proofs...),
+	)
 	return err
+}
+
+// CallOption configures one claim call.
+type CallOption func(*callConfig)
+
+type callConfig struct {
+	proofs     []ucan.Delegation
+	invocation []invocation.Option
+}
+
+// WithProofs attaches the delegations that authorize the invocation. The
+// service resolves them from the request container, so the envelopes travel
+// with the call and their links go on the invocation.
+func WithProofs(proofs ...ucan.Delegation) CallOption {
+	return func(cfg *callConfig) { cfg.proofs = append(cfg.proofs, proofs...) }
+}
+
+// WithInvocationOptions passes options through to the invocation being built.
+func WithInvocationOptions(options ...invocation.Option) CallOption {
+	return func(cfg *callConfig) { cfg.invocation = append(cfg.invocation, options...) }
+}
+
+func newCallConfig(options []CallOption) callConfig {
+	var cfg callConfig
+	for _, opt := range options {
+		opt(&cfg)
+	}
+	return cfg
+}
+
+// invocationOptions are the caller's own options plus the links to whatever
+// proofs they attached.
+func (cfg callConfig) invocationOptions() []invocation.Option {
+	if len(cfg.proofs) == 0 {
+		return cfg.invocation
+	}
+	links := make([]cid.Cid, 0, len(cfg.proofs))
+	for _, p := range cfg.proofs {
+		links = append(links, p.Link())
+	}
+	return append(cfg.invocation, invocation.WithProofs(links...))
 }
 
 func (c *Client) QueryClaims(ctx context.Context, query types.Query) (types.QueryResult, error) {

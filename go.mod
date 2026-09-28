@@ -1,6 +1,6 @@
 module github.com/fil-forge/indexing-service
 
-go 1.25.7
+go 1.27.0
 
 require (
 	github.com/alanshaw/dag-json-gen v0.0.9
@@ -19,7 +19,7 @@ require (
 	github.com/fil-forge/automobile v0.0.1
 	github.com/fil-forge/go-ipni-tools v0.0.0-20260820150418-78ca0c16834d
 	github.com/fil-forge/libforge v0.0.0-20260807225550-3e6895b41be5
-	github.com/fil-forge/ucantone v0.0.0-20260817170631-3a20cd59fabc
+	github.com/fil-forge/ucantone v0.0.0-20260924091437-545e8d7d120c
 	github.com/getsentry/sentry-go v0.48.0
 	github.com/google/uuid v1.6.0
 	github.com/ipfs/go-cid v0.6.2
