@@ -135,7 +135,7 @@ func (t *QueryResult0_1) MarshalDagJSON(w io.Writer) error {
 	if err := jw.WriteObjectOpen(); err != nil {
 		return err
 	}
-	written := 0
+	written := false
 
 	// t.Claims ([]cid.Cid) (slice)
 	if len("claims") > 8192 {
@@ -170,8 +170,8 @@ func (t *QueryResult0_1) MarshalDagJSON(w io.Writer) error {
 		return fmt.Errorf("writing array close for field t.Claims: %w", err)
 	}
 
-	written++
-	if written > 0 {
+	written = true
+	if written {
 		if err := jw.WriteComma(); err != nil {
 			return err
 		}
@@ -228,7 +228,6 @@ func (t *QueryResult0_1) MarshalDagJSON(w io.Writer) error {
 		}
 	}
 
-	written++
 	if err := jw.WriteObjectClose(); err != nil {
 		return err
 	}
