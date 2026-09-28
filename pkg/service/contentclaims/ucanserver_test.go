@@ -137,10 +137,19 @@ func TestServerRejectsUnauthorizedClaims(t *testing.T) {
 	require.NoError(t, err)
 
 	stranger := testutil.RandomIssuer(t)
+	// A claim subjected to somewhere other than this service, carrying a chain
+	// the validator accepts: the other subject delegates the command to the
+	// caller, so what rejects the invocation is the subject check rather than
+	// the missing proofs.
+	elsewhere := testutil.RandomIssuer(t)
+	elsewhereProof := testutil.Must(claimcaps.Cache.Delegate(
+		elsewhere, stranger.DID(), elsewhere.DID(),
+	))(t)
 
 	tests := []struct {
 		name    string
 		inv     ucan.Invocation
+		proofs  []ucan.Delegation
 		wantErr error
 	}{
 		{
@@ -169,11 +178,27 @@ func TestServerRejectsUnauthorizedClaims(t *testing.T) {
 			))(t),
 			wantErr: middleware.ErrSelfSignedInvocation,
 		},
+		{
+			name: "a cache claim subjected elsewhere is rejected",
+			inv: testutil.Must(claimcaps.Cache.Invoke(
+				stranger,
+				elsewhere.DID(),
+				&claimcaps.CacheArguments{
+					Claim:    testutil.RandomCID(t),
+					Provider: claimcaps.Provider{Addresses: [][]byte{testutil.RandomMultiaddr(t).Bytes()}},
+				},
+				invocation.WithAudience(testutil.Service.DID()),
+				invocation.WithProofs(elsewhereProof.Link()),
+			))(t),
+			proofs:  []ucan.Delegation{elsewhereProof},
+			wantErr: middleware.ErrInvalidSubject,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			resp, err := httpClient.Execute(execution.NewRequest(t.Context(), tt.inv))
+			req := execution.NewRequest(t.Context(), tt.inv, execution.WithDelegations(tt.proofs...))
+			resp, err := httpClient.Execute(req)
 			require.NoError(t, err)
 			require.ErrorIs(t, receiptFailure(t, resp.Receipt()), tt.wantErr)
 		})

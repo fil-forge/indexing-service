@@ -18,7 +18,9 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.24.x"
+          # Read from go.mod so the release job tracks the module's own
+          # requirement instead of drifting behind it.
+          go-version-file: go.mod
       - name: Release Binaries
         uses: goreleaser/goreleaser-action@v6
         with:
