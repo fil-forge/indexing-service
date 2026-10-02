@@ -19,6 +19,7 @@ func main() {
 			serverCmd,
 			awsCmd,
 			queryCmd,
+			versionCmd,
 		},
 	}
 
