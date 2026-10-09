@@ -48,8 +48,8 @@ github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.14.4 h1:29SvnfGhX
 github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.14.4/go.mod h1:wm04I5DMuNVvZHFe/dHnUxincvNbbK7AiNBbYsQivek=
 github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.20.4 h1:pPiWfgeNxqluKEph7hvU88kuGKBPOWzO+Dk9t2zqqNs=
 github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.20.4/go.mod h1:YlwGoIUDG/3kBQbdNOVs/xKZ9J01G8e/6D1mRBj9uTk=
-github.com/aws/aws-sdk-go-v2/service/route53 v1.65.10 h1:8DaAa7LNudNOcUOjVGe9pEqYs1ASbryLS2bvrrPOXrA=
-github.com/aws/aws-sdk-go-v2/service/route53 v1.65.10/go.mod h1:6amAo95XiktlgMb0blErtqRNw2+Lhz2pJsE1tNDQgUU=
+github.com/aws/aws-sdk-go-v2/service/route53 v1.70.1 h1:M30ocYvHPt4GiQH9KHG89/O/EKYpxT2bFwASOBmPtBw=
+github.com/aws/aws-sdk-go-v2/service/route53 v1.70.1/go.mod h1:120WTsKTWzoFwIpk9W1qJt7Uq51pRztY+pRcdLSiQxM=
 github.com/aws/aws-sdk-go-v2/service/s3 v1.114.0 h1:VMAdYqr4Jn/8ATs9BHC5riwrs0d6m1Z2ohFriSwZwm0=
 github.com/aws/aws-sdk-go-v2/service/s3 v1.114.0/go.mod h1:9APRWGLFITKD+xzWSIyT9V7QV4bNlEuIieWlzXgGFlI=
 github.com/aws/aws-sdk-go-v2/service/signin v1.10.1 h1:DzCCWLzcIRQ77F3DEUljud7bEjTgFOIKXP52NmVRyhU=
@@ -441,8 +441,8 @@ go.opentelemetry.io/contrib/detectors/aws/lambda v0.72.0 h1:gKsjmcuR+npDYCU0eKr+
 go.opentelemetry.io/contrib/detectors/aws/lambda v0.72.0/go.mod h1:HGOozwFkxxraTFSoQfQRiL1nHX/RlIh8MemFr1F4tX8=
 go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-lambda-go/otellambda v0.72.0 h1:t5rj7USXCAFlV6CnOMjerWQcYFfp2bd5kaxVDWYhFyE=
 go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-lambda-go/otellambda v0.72.0/go.mod h1:CcsOItHQ7Wx6uQh3aqoOhfaKOJJpec31w5X3TDGfeLc=
-go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.71.0 h1:ZiBz2gzZi+NwBk5T5X0Myv9lJl44Pwfn6pTGrml/1fU=
-go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.71.0/go.mod h1:aooSSF40vZQZ+AVWv95T2eVU5ZZWiPgqrTtBgaOWxgg=
+go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.72.0 h1:ddEa1svIlpFtku1zdMRl7rAZ0NMlyO8QPnPfY5MQzpg=
+go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.72.0/go.mod h1:GAscagS5fJwnTQpDHcz/hA9Iy4xUaVnRgwEyFMHJTHI=
 go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.71.0 h1:3g7B90UzBltIDKq1/5mrTGxTnOFDV0ICOhLoxiZ8jlg=
 go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.71.0/go.mod h1:Ef8SuTh59BT7+ofpDxN9z+yOlc4t2GjLmKDgYNJL/NU=
 go.opentelemetry.io/contrib/propagators/aws v1.47.0 h1:n/2x/vQki1ojD7R2jYHdnNdI74Yx/OFdY4YXFFesm8M=
