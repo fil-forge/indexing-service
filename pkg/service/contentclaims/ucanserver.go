@@ -10,7 +10,7 @@ func NewUCANServer(id ucan.Issuer, service types.Publisher, options ...server.HT
 	ucanServer := server.NewHTTP(id, options...)
 	routes := NewUCANService(service, id.DID())
 	for _, route := range routes {
-		ucanServer.Handle(route.Command, route.Handler)
+		ucanServer.HandleRoute(route)
 	}
 	return ucanServer, nil
 }
