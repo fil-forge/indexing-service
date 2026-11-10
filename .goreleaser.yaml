@@ -4,9 +4,12 @@ builds:
   - main: ./cmd
     binary: indexing-service
     ldflags:
-      # Sets the version variable in the build package to the build version prefixed with a 'v'
-      # Sets the main.date to a static date for checksum verification. See https://goreleaser.com/customization/builds/#reproducible-builds.
-      - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.CommitDate}} -X main.builtBy=goreleaser -X github.com/fil-forge/indexing-service/pkg/build.version=v{{.Version}}
+      # Every -X names a variable that exists in pkg/build: the linker accepts a
+      # -X for a symbol that does not exist WITHOUT any diagnostic, so a flag
+      # pointing at the wrong package is a silent no-op, not a build failure.
+      # Date is {{.CommitDate}} rather than the build time so the checksums are
+      # reproducible. See https://goreleaser.com/customization/builds/#reproducible-builds.
+      - -s -w -X github.com/fil-forge/indexing-service/pkg/build.version=v{{.Version}} -X github.com/fil-forge/indexing-service/pkg/build.Commit={{.Commit}} -X github.com/fil-forge/indexing-service/pkg/build.Date={{.CommitDate}} -X github.com/fil-forge/indexing-service/pkg/build.BuiltBy=goreleaser
     goos:
       - linux
       - windows
