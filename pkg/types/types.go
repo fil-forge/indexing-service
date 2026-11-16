@@ -13,7 +13,7 @@ import (
 	"github.com/fil-forge/ucantone/ucan"
 	"github.com/ipfs/go-cid"
 	"github.com/ipni/go-libipni/find/model"
-	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/multiformats/go-multiaddr"
 	"github.com/multiformats/go-multicodec"
 	mh "github.com/multiformats/go-multihash"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -182,8 +182,9 @@ type Getter interface {
 }
 
 type Publisher interface {
-	// Cache caches a claim with the service temporarily.
-	Cache(ctx context.Context, provider peer.AddrInfo, claim ucan.Invocation, meta ucan.Container) error
+	// Cache caches a claim with the service temporarily. addrs are where the
+	// claim's issuer serves the claim and the content it describes.
+	Cache(ctx context.Context, addrs []multiaddr.Multiaddr, claim ucan.Invocation, meta ucan.Container) error
 	// Publish writes a claim to permanent storage, adds it to an IPNI
 	// advertisement, annnounces it to IPNI nodes and caches it.
 	Publish(ctx context.Context, claim ucan.Invocation, meta ucan.Container) error

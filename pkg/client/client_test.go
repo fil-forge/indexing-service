@@ -26,7 +26,6 @@ import (
 	"github.com/fil-forge/ucantone/ucan"
 	"github.com/ipfs/go-cid"
 	"github.com/ipni/go-libipni/maurl"
-	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/multiformats/go-multihash"
 	"github.com/stretchr/testify/require"
@@ -236,7 +235,7 @@ func (r *recordingIndexer) reset() {
 	r.published = nil
 }
 
-func (r *recordingIndexer) Cache(ctx context.Context, provider peer.AddrInfo, claim ucan.Invocation, meta ucan.Container) error {
+func (r *recordingIndexer) Cache(ctx context.Context, addrs []multiaddr.Multiaddr, claim ucan.Invocation, meta ucan.Container) error {
 	r.cached = append(r.cached, claim)
 	return nil
 }

@@ -35,6 +35,7 @@ import (
 	"github.com/fil-forge/indexing-service/pkg/presets"
 	"github.com/fil-forge/indexing-service/pkg/redis"
 	"github.com/fil-forge/indexing-service/pkg/server"
+	"github.com/fil-forge/indexing-service/pkg/service"
 )
 
 var serverCmd = &cli.Command{
@@ -194,18 +195,18 @@ var serverCmd = &cli.Command{
 					return fmt.Errorf("creating HTTP resolver: %w", err)
 				}
 
+				didResolver := resolver.ByMethod{
+					"key": key.Resolver,
+					"web": resolver.Tiered{
+						wellKnownResolv,
+						resolver.NewCached(httpResolv, time.Hour*3),
+					},
+				}
+
 				opts = append(
 					opts,
 					server.WithContentClaimsOptions(
-						userver.WithValidationOptions(
-							validator.WithDIDResolver(resolver.ByMethod{
-								"key": key.Resolver,
-								"web": resolver.Tiered{
-									wellKnownResolv,
-									resolver.NewCached(httpResolv, time.Hour*3),
-								},
-							}),
-						),
+						userver.WithValidationOptions(validator.WithDIDResolver(didResolver)),
 					),
 				)
 
@@ -262,6 +263,7 @@ var serverCmd = &cli.Command{
 					construct.WithNoProvidersClient(redisClient),
 					construct.WithClaimsClient(redisClient),
 					construct.WithIndexesClient(redisClient),
+					construct.WithServiceOptions(service.WithDIDResolver(didResolver)),
 				)
 				if err != nil {
 					return err
