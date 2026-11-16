@@ -9,7 +9,7 @@ import (
 
 	"github.com/fil-forge/ucantone/ucan"
 	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/multiformats/go-multiaddr"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -41,16 +41,16 @@ func (_m *MockService) EXPECT() *MockService_Expecter {
 }
 
 // Cache provides a mock function for the type MockService
-func (_mock *MockService) Cache(ctx context.Context, provider peer.AddrInfo, claim ucan.Invocation, meta ucan.Container) error {
-	ret := _mock.Called(ctx, provider, claim, meta)
+func (_mock *MockService) Cache(ctx context.Context, addrs []multiaddr.Multiaddr, claim ucan.Invocation, meta ucan.Container) error {
+	ret := _mock.Called(ctx, addrs, claim, meta)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Cache")
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, peer.AddrInfo, ucan.Invocation, ucan.Container) error); ok {
-		r0 = returnFunc(ctx, provider, claim, meta)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, []multiaddr.Multiaddr, ucan.Invocation, ucan.Container) error); ok {
+		r0 = returnFunc(ctx, addrs, claim, meta)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -64,22 +64,22 @@ type MockService_Cache_Call struct {
 
 // Cache is a helper method to define mock.On call
 //   - ctx context.Context
-//   - provider peer.AddrInfo
+//   - addrs []multiaddr.Multiaddr
 //   - claim ucan.Invocation
 //   - meta ucan.Container
-func (_e *MockService_Expecter) Cache(ctx interface{}, provider interface{}, claim interface{}, meta interface{}) *MockService_Cache_Call {
-	return &MockService_Cache_Call{Call: _e.mock.On("Cache", ctx, provider, claim, meta)}
+func (_e *MockService_Expecter) Cache(ctx interface{}, addrs interface{}, claim interface{}, meta interface{}) *MockService_Cache_Call {
+	return &MockService_Cache_Call{Call: _e.mock.On("Cache", ctx, addrs, claim, meta)}
 }
 
-func (_c *MockService_Cache_Call) Run(run func(ctx context.Context, provider peer.AddrInfo, claim ucan.Invocation, meta ucan.Container)) *MockService_Cache_Call {
+func (_c *MockService_Cache_Call) Run(run func(ctx context.Context, addrs []multiaddr.Multiaddr, claim ucan.Invocation, meta ucan.Container)) *MockService_Cache_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 peer.AddrInfo
+		var arg1 []multiaddr.Multiaddr
 		if args[1] != nil {
-			arg1 = args[1].(peer.AddrInfo)
+			arg1 = args[1].([]multiaddr.Multiaddr)
 		}
 		var arg2 ucan.Invocation
 		if args[2] != nil {
@@ -104,7 +104,7 @@ func (_c *MockService_Cache_Call) Return(err error) *MockService_Cache_Call {
 	return _c
 }
 
-func (_c *MockService_Cache_Call) RunAndReturn(run func(ctx context.Context, provider peer.AddrInfo, claim ucan.Invocation, meta ucan.Container) error) *MockService_Cache_Call {
+func (_c *MockService_Cache_Call) RunAndReturn(run func(ctx context.Context, addrs []multiaddr.Multiaddr, claim ucan.Invocation, meta ucan.Container) error) *MockService_Cache_Call {
 	_c.Call.Return(run)
 	return _c
 }
