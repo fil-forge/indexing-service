@@ -2,7 +2,6 @@ package server
 
 import (
 	"compress/gzip"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -15,6 +14,7 @@ import (
 	"github.com/fil-forge/indexing-service/pkg/telemetry"
 	"github.com/fil-forge/indexing-service/pkg/types"
 	assertcaps "github.com/fil-forge/libforge/commands/assert"
+	"github.com/fil-forge/libforge/diddoc"
 	"github.com/fil-forge/libforge/identity"
 	"github.com/fil-forge/libforge/ucan/retrieval"
 	"github.com/fil-forge/ucantone/did"
@@ -397,21 +397,23 @@ func GetIPNICIDHandler(service types.Querier, config *ipniConfig) http.HandlerFu
 	}
 }
 
-// GetDIDDocument returns the DID document for did:web resolution.
+// GetDIDDocument returns the DID document for did:web resolution. Responses
+// carry Cache-Control, ETag and Last-Modified headers, and conditional
+// requests get a 304 when the document has not changed.
 func GetDIDDocument(issuer multikey.Issuer) http.HandlerFunc {
-	id := identity.Identity{Issuer: issuer}
-	return func(w http.ResponseWriter, r *http.Request) {
-		doc, err := id.DIDDocument()
-		if err != nil {
+	handler, err := newDIDDocumentHandler(identity.Identity{Issuer: issuer})
+	if err != nil {
+		return func(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, fmt.Sprintf("getting DID document: %s", err), http.StatusInternalServerError)
-			return
 		}
-		w.Header().Add("Content-Type", "application/json")
-		bytes, err := json.Marshal(doc)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.Write(bytes)
 	}
+	return handler.ServeHTTP
+}
+
+func newDIDDocumentHandler(id identity.Identity) (http.Handler, error) {
+	doc, err := id.DIDDocument()
+	if err != nil {
+		return nil, err
+	}
+	return diddoc.NewHandler(doc)
 }
