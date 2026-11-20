@@ -19,7 +19,7 @@ require (
 	github.com/fil-forge/automobile v0.0.1
 	github.com/fil-forge/go-ipni-tools v0.0.0-20260820150418-78ca0c16834d
 	github.com/fil-forge/libforge v0.0.0-20261022121207-bcdd5eacc465
-	github.com/fil-forge/ucantone v0.0.0-20261103134646-342e8488c56a
+	github.com/fil-forge/ucantone v0.0.0-20261120104359-4253712d41e4
 	github.com/getsentry/sentry-go v0.50.0
 	github.com/google/uuid v1.6.0
 	github.com/ipfs/go-cid v0.6.2
@@ -92,7 +92,7 @@ require (
 	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
-	github.com/gobwas/glob v0.2.3 // indirect
+	github.com/gobwas/glob v1.1.0 // indirect
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.30.0 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
