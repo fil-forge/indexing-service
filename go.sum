@@ -122,10 +122,10 @@ github.com/fil-forge/automobile v0.0.1 h1:9xB3yc4l5b9EdRJSJcNwudgBFNHoMPEAdcb7Gf
 github.com/fil-forge/automobile v0.0.1/go.mod h1:TsO7jlO8ykJZY5tF8j4GsUcu3F02lEzxO7ULoB61hRA=
 github.com/fil-forge/go-ipni-tools v0.0.0-20260820150418-78ca0c16834d h1:iEXJC5aJgRHq2iM4X6usfow436OQGauLjDuga1Hiq4o=
 github.com/fil-forge/go-ipni-tools v0.0.0-20260820150418-78ca0c16834d/go.mod h1:fwLjqz34DvfoWcuzyH8Wr7dTJdr3mzYjxZRweysHOH4=
-github.com/fil-forge/libforge v0.0.0-20261022121207-bcdd5eacc465 h1:y7EPy1Fbn/LWQMy7iYKoZ1G0Pi88a4Z8tVw7uFOBjLA=
-github.com/fil-forge/libforge v0.0.0-20261022121207-bcdd5eacc465/go.mod h1:ZtPwUgXm7gqQSmjmIcfMy5AwWpFIR02WMZvbgNOwi/4=
-github.com/fil-forge/ucantone v0.0.0-20261120104359-4253712d41e4 h1:2hQIpdhNOu0QKY1rpdsYnJRtNG/0MklyETPraR/ms+Y=
-github.com/fil-forge/ucantone v0.0.0-20261120104359-4253712d41e4/go.mod h1:PJe9Lcv+QWawlM29ItA9y5JzFIs37gZ3jODxYKXbQkM=
+github.com/fil-forge/libforge v0.0.0-20261120163920-be478caf686c h1:NlFe+0Uiia6xEqmyLncClPAAXc4XxjQ/WAidiKnppDM=
+github.com/fil-forge/libforge v0.0.0-20261120163920-be478caf686c/go.mod h1:bvAs+1dZ3MM2yIBYG1oMX/+dD7MyybEYLZQ/hH8FYD4=
+github.com/fil-forge/ucantone v0.0.0-20261120160831-cf6c452a3cd7 h1:3Bhat1RvTC2z3NMpy6l22C97VKQYp2dEBxY1SdJsW4I=
+github.com/fil-forge/ucantone v0.0.0-20261120160831-cf6c452a3cd7/go.mod h1:PJe9Lcv+QWawlM29ItA9y5JzFIs37gZ3jODxYKXbQkM=
 github.com/filecoin-project/go-clock v0.1.0 h1:SFbYIM75M8NnFm1yMHhN9Ahy3W5bEZV9gd6MPfXbKVU=
 github.com/filecoin-project/go-clock v0.1.0/go.mod h1:4uB/O4PvOjlx1VCMdZ9MyDZXRm//gkj1ELEbxfI1AZs=
 github.com/flynn/noise v1.1.0 h1:KjPQoQCEFdZDiP03phOvGi11+SVVhBG2wOWAorLsstg=

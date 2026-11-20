@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/awslabs/aws-lambda-go-api-proxy/httpadapter"
 	"github.com/fil-forge/indexing-service/cmd/lambda"
@@ -52,7 +51,7 @@ func makeHandler(cfg aws.Config) any {
 					"key": key.Resolver,
 					"web": resolver.Tiered{
 						wellKnownResolv,
-						resolver.NewCached(httpResolv, time.Hour*3),
+						httpResolv,
 					},
 				}),
 			),
