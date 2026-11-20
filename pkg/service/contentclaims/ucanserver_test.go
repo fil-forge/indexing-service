@@ -19,7 +19,7 @@ import (
 	"github.com/fil-forge/ucantone/ucan"
 	"github.com/fil-forge/ucantone/ucan/invocation"
 	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/require"
 )
 
@@ -205,6 +205,48 @@ func TestServerRejectsUnauthorizedClaims(t *testing.T) {
 	}
 }
 
+// TestServerRejectsAClaimCachedByAnotherNode covers the rule that a node
+// caches only its own claims: the cached provider is whoever signed the claim,
+// and the addresses come from the invoker.
+func TestServerRejectsAClaimCachedByAnotherNode(t *testing.T) {
+	srv, err := NewUCANServer(testutil.Service, &mockIndexer{})
+	require.NoError(t, err)
+
+	httpSrv := httptest.NewServer(srv)
+	t.Cleanup(httpSrv.Close)
+
+	srvURL, err := url.Parse(httpSrv.URL)
+	require.NoError(t, err)
+
+	httpClient, err := client.NewHTTP(srvURL)
+	require.NoError(t, err)
+
+	invoker := testutil.Alice
+	// Another node's commitment.
+	commitment := testutil.RandomLocationCommitment(t)
+
+	proof := testutil.Must(claimcaps.Cache.Delegate(
+		testutil.Service, invoker.DID(), testutil.Service.DID(),
+	))(t)
+	inv := testutil.Must(claimcaps.Cache.Invoke(
+		invoker,
+		testutil.Service.DID(),
+		&claimcaps.CacheArguments{
+			Claim:    commitment.Link(),
+			Provider: claimcaps.Provider{Addresses: [][]byte{testutil.RandomMultiaddr(t).Bytes()}},
+		},
+		invocation.WithProofs(proof.Link()),
+	))(t)
+
+	resp, err := httpClient.Execute(execution.NewRequest(
+		t.Context(), inv,
+		execution.WithInvocations(commitment),
+		execution.WithDelegations(proof),
+	))
+	require.NoError(t, err)
+	require.ErrorIs(t, receiptFailure(t, resp.Receipt()), ErrClaimIssuerMismatch)
+}
+
 // receiptFailure decodes the failure a receipt carries, so it can be matched
 // against a named sentinel.
 func receiptFailure(t *testing.T, rcpt ucan.Receipt) error {
@@ -223,7 +265,7 @@ func (m *mockIndexer) Get(ctx context.Context, claim cid.Cid) (ucan.Invocation, 
 	return nil, nil
 }
 
-func (m *mockIndexer) Cache(ctx context.Context, provider peer.AddrInfo, claim ucan.Invocation, meta ucan.Container) error {
+func (m *mockIndexer) Cache(ctx context.Context, addrs []multiaddr.Multiaddr, claim ucan.Invocation, meta ucan.Container) error {
 	return nil
 }
 
