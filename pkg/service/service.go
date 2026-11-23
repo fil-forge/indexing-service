@@ -8,7 +8,6 @@ import (
 	"net/url"
 	"slices"
 	"strings"
-	"sync"
 
 	"github.com/fil-forge/go-ipni-tools/pkg/advertisement"
 	"github.com/fil-forge/go-ipni-tools/pkg/metadata"
@@ -28,7 +27,8 @@ import (
 	"github.com/fil-forge/libforge/digestutil"
 	ucanlib "github.com/fil-forge/libforge/ucan"
 	"github.com/fil-forge/ucantone/did"
-	ed25519_verifier "github.com/fil-forge/ucantone/multikey/ed25519/verifier"
+	"github.com/fil-forge/ucantone/did/key"
+	"github.com/fil-forge/ucantone/did/web"
 	"github.com/fil-forge/ucantone/ucan"
 	"github.com/fil-forge/ucantone/ucan/container"
 	"github.com/fil-forge/ucantone/validator"
@@ -62,6 +62,9 @@ type IndexingService struct {
 	// provider is the peer info for this service, used when publishing claims.
 	provider  peer.AddrInfo
 	jobWalker jobwalker.JobWalker[job, queryState]
+	// resolver resolves the DIDs of the storage nodes whose location
+	// commitments this service checks.
+	resolver did.Resolver
 }
 
 var _ types.Service = (*IndexingService)(nil)
@@ -442,8 +445,8 @@ func (is *IndexingService) Get(ctx context.Context, claim cid.Cid) (ucan.Invocat
 // (a delegation for a location commitment is already generated on blob/accept)
 // ideally however, IPNI would enable UCAN chains for publishing so that we could publish it directly from the storage service
 // it doesn't for now, so we let SPs publish themselves them direct cache with us
-func (is *IndexingService) Cache(ctx context.Context, provider peer.AddrInfo, claim ucan.Invocation, meta ucan.Container) error {
-	return Cache(ctx, is.blobIndexLookup, is.claims, is.providerIndex, provider, claim, meta)
+func (is *IndexingService) Cache(ctx context.Context, addrs []multiaddr.Multiaddr, claim ucan.Invocation, meta ucan.Container) error {
+	return Cache(ctx, is.resolver, is.blobIndexLookup, is.claims, is.providerIndex, addrs, claim, meta)
 }
 
 // Publish caches and publishes a content claim
@@ -453,7 +456,7 @@ func (is *IndexingService) Cache(ctx context.Context, provider peer.AddrInfo, cl
 // The service should lookup the index cid location claim, and fetch the ShardedDagIndexView, then use the hashes inside
 // to assemble all the multihashes in the index advertisement
 func (is *IndexingService) Publish(ctx context.Context, claim ucan.Invocation, meta ucan.Container) error {
-	return Publish(ctx, is.id, is.blobIndexLookup, is.claims, is.providerIndex, is.provider, claim, meta)
+	return Publish(ctx, is.id, is.resolver, is.blobIndexLookup, is.claims, is.providerIndex, is.provider, claim, meta)
 }
 
 // Option configures an IndexingService
@@ -463,6 +466,15 @@ type Option func(is *IndexingService)
 func WithConcurrency(concurrency int) Option {
 	return func(is *IndexingService) {
 		is.jobWalker = parallelwalk.NewParallelWalk[job, queryState](concurrency)
+	}
+}
+
+// WithDIDResolver sets the resolver used for the DIDs of storage nodes. The
+// default resolves did:key only, so a service that takes commitments from
+// did:web nodes needs one that resolves them.
+func WithDIDResolver(resolver did.Resolver) Option {
+	return func(is *IndexingService) {
+		is.resolver = resolver
 	}
 }
 
@@ -480,6 +492,7 @@ func NewIndexingService(id ucan.Issuer, blobIndexLookup blobindexlookup.BlobInde
 		provider:        provider,
 		providerIndex:   providerIndex,
 		jobWalker:       singlewalk.SingleWalker[job, queryState],
+		resolver:        key.Resolver,
 	}
 	for _, option := range options {
 		option(is)
@@ -487,22 +500,43 @@ func NewIndexingService(id ucan.Issuer, blobIndexLookup blobindexlookup.BlobInde
 	return is
 }
 
-func Cache(ctx context.Context, blobIndex blobindexlookup.BlobIndexLookup, claims contentclaims.Service, provIndex providerindex.ProviderIndex, provider peer.AddrInfo, claim ucan.Invocation, meta ucan.Container) error {
+// Cache caches a location commitment that its issuer serves at addrs.
+func Cache(ctx context.Context, resolver did.Resolver, blobIndex blobindexlookup.BlobIndexLookup, claims contentclaims.Service, provIndex providerindex.ProviderIndex, addrs []multiaddr.Multiaddr, claim ucan.Invocation, meta ucan.Container) error {
 	ctx, s := telemetry.StartSpan(ctx, "IndexingService.Cache")
 	defer s.End()
 
 	switch claim.Command() {
 	case assert.Location.Command:
 		s.SetAttributes(attribute.KeyValue{Key: "claim", Value: attribute.StringValue("assert/location")})
-		return cacheLocationCommitment(ctx, claims, provIndex, provider, claim, meta)
+		return cacheLocationCommitment(ctx, resolver, claims, provIndex, addrs, claim, meta)
 	default:
 		return ErrUnrecognizedClaim
 	}
 }
 
-func cacheLocationCommitment(ctx context.Context, claims contentclaims.Service, provIndex providerindex.ProviderIndex, provider peer.AddrInfo, claim ucan.Invocation, _ ucan.Container) error {
+func cacheLocationCommitment(ctx context.Context, resolver did.Resolver, claims contentclaims.Service, provIndex providerindex.ProviderIndex, addrs []multiaddr.Multiaddr, claim ucan.Invocation, _ ucan.Container) error {
 	if claim.Command() != assert.Location.Command {
 		return fmt.Errorf("invalid claim type: expected assert/location, got %s", claim.Command().String())
+	}
+
+	// The provider is the key that signed the commitment, which is also the
+	// peer the node advertises it to IPNI under.
+	peerID, err := signerPeerID(ctx, resolver, claim)
+	if err != nil {
+		return fmt.Errorf("identifying the provider of the claim: %w", err)
+	}
+	provider := peer.AddrInfo{ID: peerID, Addrs: addrs}
+
+	// Only a did:web names a host its claims must be served from, so only then
+	// does the node have to advertise a claim endpoint.
+	if claim.Issuer().Method() == web.Method {
+		claimURL, err := fetchClaimURL(provider, claim.Link())
+		if err != nil {
+			return fmt.Errorf("building claim URL: %w", err)
+		}
+		if err := checkClaimOrigin(claim.Issuer(), claimURL); err != nil {
+			return err
+		}
 	}
 
 	var args assert.LocationArguments
@@ -510,7 +544,7 @@ func cacheLocationCommitment(ctx context.Context, claims contentclaims.Service, 
 		return fmt.Errorf("unmarshaling location claim arguments: %w", err)
 	}
 
-	err := claims.Cache(ctx, claim)
+	err = claims.Cache(ctx, claim)
 	if err != nil {
 		return fmt.Errorf("caching claim with claim service: %w", err)
 	}
@@ -557,7 +591,7 @@ func cacheLocationCommitment(ctx context.Context, claims contentclaims.Service, 
 	return nil
 }
 
-func Publish(ctx context.Context, id ucan.Issuer, blobIndex blobindexlookup.BlobIndexLookup, claims contentclaims.Service, provIndex providerindex.ProviderIndex, provider peer.AddrInfo, claim ucan.Invocation, meta ucan.Container) error {
+func Publish(ctx context.Context, id ucan.Issuer, resolver did.Resolver, blobIndex blobindexlookup.BlobIndexLookup, claims contentclaims.Service, provIndex providerindex.ProviderIndex, provider peer.AddrInfo, claim ucan.Invocation, meta ucan.Container) error {
 	ctx, s := telemetry.StartSpan(ctx, "IndexingService.Publish")
 	defer s.End()
 
@@ -567,7 +601,7 @@ func Publish(ctx context.Context, id ucan.Issuer, blobIndex blobindexlookup.Blob
 		return publishEqualsClaim(ctx, claims, provIndex, provider, claim, meta)
 	case assert.Index.Command:
 		s.SetAttributes(attribute.KeyValue{Key: "claim", Value: attribute.StringValue(assert.Index.String())})
-		return publishIndexClaim(ctx, id, blobIndex, claims, provIndex, provider, claim, meta)
+		return publishIndexClaim(ctx, id, resolver, blobIndex, claims, provIndex, provider, claim, meta)
 	default:
 		return ErrUnrecognizedClaim
 	}
@@ -609,7 +643,7 @@ func publishEqualsClaim(ctx context.Context, claims contentclaims.Service, provI
 	return nil
 }
 
-func publishIndexClaim(ctx context.Context, id ucan.Issuer, blobIndex blobindexlookup.BlobIndexLookup, claims contentclaims.Service, provIndex providerindex.ProviderIndex, provider peer.AddrInfo, claim ucan.Invocation, claimMeta ucan.Container) error {
+func publishIndexClaim(ctx context.Context, id ucan.Issuer, resolver did.Resolver, blobIndex blobindexlookup.BlobIndexLookup, claims contentclaims.Service, provIndex providerindex.ProviderIndex, provider peer.AddrInfo, claim ucan.Invocation, claimMeta ucan.Container) error {
 	var args assert.IndexArguments
 	if err := args.UnmarshalCBOR(bytes.NewReader(claim.ArgumentsBytes())); err != nil {
 		return fmt.Errorf("unmarshaling index claim arguments: %w", err)
@@ -634,7 +668,7 @@ func publishIndexClaim(ctx context.Context, id ucan.Issuer, blobIndex blobindexl
 	var idx blobindex.ShardedDagIndex
 	var ferr error
 	for _, r := range results {
-		idx, ferr = fetchBlobIndex(ctx, id, blobIndex, claims, args.Index, r, claim, claimMeta)
+		idx, ferr = fetchBlobIndex(ctx, id, resolver, blobIndex, claims, args.Index, r, claim, claimMeta)
 		if ferr != nil {
 			continue
 		}
@@ -676,6 +710,7 @@ func publishIndexClaim(ctx context.Context, id ucan.Issuer, blobIndex blobindexl
 func fetchBlobIndex(
 	ctx context.Context,
 	id ucan.Issuer,
+	resolver did.Resolver,
 	blobIndex blobindexlookup.BlobIndexLookup,
 	claims contentclaims.Service,
 	blobLink cid.Cid,
@@ -704,35 +739,22 @@ func fetchBlobIndex(
 		return nil, fmt.Errorf("building retrieval URL: %w", err)
 	}
 
-	aud, err := peerToPrincipal(result.Provider.ID)
+	// The commitment names the node to retrieve from: its issuer is the
+	// audience of the retrieval, so it is fetched and checked first.
+	claimURL, err := fetchClaimURL(*result.Provider, lcmeta.Claim)
 	if err != nil {
-		return nil, fmt.Errorf("converting provider peer ID to UCAN principal: %w", err)
+		return nil, fmt.Errorf("building claim URL: %w", err)
 	}
-
-	var wg sync.WaitGroup
-	wg.Add(1)
-
-	var validateErr error
-	go func() {
-		defer wg.Done()
-		claimURL, err := fetchClaimURL(*result.Provider, lcmeta.Claim)
-		if err != nil {
-			validateErr = fmt.Errorf("building claim URL: %w", err)
-			return
-		}
-
-		claim, err := claims.Find(ctx, lcmeta.Claim, claimURL)
-		if err != nil {
-			validateErr = err
-			return
-		}
-
-		err = validateLocationCommitment(ctx, claim)
-		if err != nil {
-			validateErr = err
-			return
-		}
-	}()
+	claim, err := claims.Find(ctx, lcmeta.Claim, claimURL)
+	if err != nil {
+		return nil, fmt.Errorf("fetching claim: %w", err)
+	}
+	if err := checkClaimOrigin(claim.Issuer(), claimURL); err != nil {
+		return nil, fmt.Errorf("verifying claim: %w", err)
+	}
+	if err := validateLocationCommitment(ctx, resolver, claim); err != nil {
+		return nil, fmt.Errorf("verifying claim: %w", err)
+	}
 
 	// Try to extract a /content/retrieve delegation from the /assert/index
 	// invocation.
@@ -754,7 +776,7 @@ func fetchBlobIndex(
 		Range: &contentRange,
 		Auth: types.RetrievalAuth{
 			Issuer:   id,
-			Audience: aud,
+			Audience: claim.Issuer(),
 			Command:  content.Retrieve.Command,
 			Subject:  proofs[0].Subject(),
 			Arguments: &content.RetrieveArguments{
@@ -770,39 +792,17 @@ func fetchBlobIndex(
 		return nil, fmt.Errorf("fetching index: %w", err)
 	}
 
-	wg.Wait()
-	if validateErr != nil {
-		return nil, fmt.Errorf("verifying claim: %w", validateErr)
-	}
-
 	return idx, nil
 }
 
 // validateLocationCommitment ensures that the claim is a valid UCAN (signed,
-// not expired etc.) and is a location commitment.
-func validateLocationCommitment(ctx context.Context, claim ucan.Invocation) error {
+// not expired etc.) and is a location commitment. resolver resolves the DID of
+// the node that issued it.
+func validateLocationCommitment(ctx context.Context, resolver did.Resolver, claim ucan.Invocation) error {
 	if claim.Command() != assert.Location.Command {
 		return fmt.Errorf("unexpected command: %s", claim.Command())
 	}
-	return validator.ValidateInvocation(ctx, claim)
-}
-
-// peerToPrincipal converts a peer ID into a `did:key:`. Currently
-// supports only ed25519 keys.
-func peerToPrincipal(peer peer.ID) (did.DID, error) {
-	pk, err := peer.ExtractPublicKey()
-	if err != nil {
-		return did.Undef, fmt.Errorf("extracting public key from peer ID: %w", err)
-	}
-	pubBytes, err := pk.Raw()
-	if err != nil {
-		return did.Undef, fmt.Errorf("extracting raw bytes of public key: %w", err)
-	}
-	v, err := ed25519_verifier.FromRaw(pubBytes)
-	if err != nil {
-		return did.Undef, fmt.Errorf("decoding raw ed25519 public key: %w", err)
-	}
-	return v.KeyDID(), nil
+	return validator.ValidateInvocation(ctx, claim, validator.WithDIDResolver(resolver))
 }
 
 // extractContentRetrieveDelegation extracts a `/content/retrieve`

@@ -15,9 +15,6 @@ import (
 	"github.com/fil-forge/indexing-service/pkg/service/providerindex/remotesyncer"
 	"github.com/fil-forge/indexing-service/pkg/telemetry"
 	"github.com/fil-forge/libforge/identity"
-	"github.com/fil-forge/ucantone/did/key"
-	"github.com/fil-forge/ucantone/did/resolver"
-	"github.com/fil-forge/ucantone/did/web"
 	userver "github.com/fil-forge/ucantone/server"
 	"github.com/fil-forge/ucantone/validator"
 	goredis "github.com/redis/go-redis/v9"
@@ -44,34 +41,15 @@ var awsCmd = &cli.Command{
 			server.WithIdentity(id),
 		}
 
-		wellKnownResolv, err := aws.NewPrincipalMappingResolver(cfg.PrincipalMapping)
+		didResolver, err := aws.NewDIDResolver(cfg)
 		if err != nil {
-			return fmt.Errorf("creating principal mapping resolver: %w", err)
-		}
-
-		doc, err := id.DIDDocument()
-		if err != nil {
-			return fmt.Errorf("creating DID document: %w", err)
-		}
-		wellKnownResolv[cfg.ID.DID()] = doc
-
-		httpResolv, err := web.NewResolver()
-		if err != nil {
-			return fmt.Errorf("creating HTTP resolver: %w", err)
+			return err
 		}
 
 		srvOpts = append(
 			srvOpts,
 			server.WithContentClaimsOptions(
-				userver.WithValidationOptions(
-					validator.WithDIDResolver(resolver.ByMethod{
-						"key": key.Resolver,
-						"web": resolver.Tiered{
-							wellKnownResolv,
-							httpResolv,
-						},
-					}),
-				),
+				userver.WithValidationOptions(validator.WithDIDResolver(didResolver)),
 			),
 		)
 

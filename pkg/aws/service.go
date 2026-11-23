@@ -23,11 +23,15 @@ import (
 	"github.com/fil-forge/indexing-service/pkg/construct"
 	"github.com/fil-forge/indexing-service/pkg/presets"
 	"github.com/fil-forge/indexing-service/pkg/redis"
+	"github.com/fil-forge/indexing-service/pkg/service"
 	"github.com/fil-forge/indexing-service/pkg/service/contentclaims"
 	"github.com/fil-forge/indexing-service/pkg/telemetry"
 	"github.com/fil-forge/indexing-service/pkg/types"
+	"github.com/fil-forge/libforge/identity"
 	"github.com/fil-forge/ucantone/did"
+	"github.com/fil-forge/ucantone/did/key"
 	"github.com/fil-forge/ucantone/did/resolver"
+	"github.com/fil-forge/ucantone/did/web"
 	"github.com/fil-forge/ucantone/multikey"
 	"github.com/fil-forge/ucantone/multikey/ed25519"
 	"github.com/getsentry/sentry-go"
@@ -244,8 +248,40 @@ func FromEnv(ctx context.Context) Config {
 	}
 }
 
+// NewDIDResolver returns the resolver for the DIDs this deployment verifies:
+// did:key, and did:web from the principal mapping, the service's own document
+// or HTTPS, in that order.
+func NewDIDResolver(cfg Config) (did.Resolver, error) {
+	wellKnown, err := NewPrincipalMappingResolver(cfg.PrincipalMapping)
+	if err != nil {
+		return nil, fmt.Errorf("creating principal mapping resolver: %w", err)
+	}
+	doc, err := identity.Identity{Issuer: cfg.ID}.DIDDocument()
+	if err != nil {
+		return nil, fmt.Errorf("creating DID document: %w", err)
+	}
+	wellKnown[cfg.ID.DID()] = doc
+
+	httpResolver, err := web.NewResolver()
+	if err != nil {
+		return nil, fmt.Errorf("creating HTTP resolver: %w", err)
+	}
+	return resolver.ByMethod{
+		"key": key.Resolver,
+		"web": resolver.Tiered{
+			wellKnown,
+			httpResolver,
+		},
+	}, nil
+}
+
 // Construct constructs types.Service from AWS deps for Lamda functions
 func Construct(cfg Config) (types.Service, error) {
+	didResolver, err := NewDIDResolver(cfg)
+	if err != nil {
+		return nil, err
+	}
+
 	httpClient := construct.DefaultHTTPClient()
 	providersClient := goredis.NewClusterClient(&cfg.ProvidersRedis)
 	noProvidersClient := goredis.NewClusterClient(&cfg.NoProviderRedis)
@@ -300,6 +336,7 @@ func Construct(cfg Config) (types.Service, error) {
 		construct.WithNoProvidersCacheOptions(redis.ExpirationTime(time.Duration(cfg.NoProvidersCacheExpirationSeconds) * time.Second)),
 		construct.WithClaimsCacheOptions(redis.ExpirationTime(time.Duration(cfg.ClaimsCacheExpirationSeconds) * time.Second)),
 		construct.WithIndexesCacheOptions(redis.ExpirationTime(time.Duration(cfg.IndexesCacheExpirationSeconds) * time.Second)),
+		construct.WithServiceOptions(service.WithDIDResolver(didResolver)),
 		construct.WithProviderIndexLogger(provIndexLog),
 	}
 
