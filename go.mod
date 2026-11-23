@@ -18,8 +18,8 @@ require (
 	github.com/benbjohnson/clock v1.3.5
 	github.com/fil-forge/automobile v0.0.1
 	github.com/fil-forge/go-ipni-tools v0.0.0-20260820150418-78ca0c16834d
-	github.com/fil-forge/libforge v0.0.0-20261120163920-be478caf686c
-	github.com/fil-forge/ucantone v0.0.0-20261120160831-cf6c452a3cd7
+	github.com/fil-forge/libforge v0.0.0-20261123132321-e3267015aa44
+	github.com/fil-forge/ucantone v0.0.0-20261123131543-0ef2b25abb66
 	github.com/getsentry/sentry-go v0.50.0
 	github.com/google/uuid v1.6.0
 	github.com/ipfs/go-cid v0.6.2
