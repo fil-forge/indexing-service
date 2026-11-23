@@ -10,7 +10,6 @@ import (
 	"net/url"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/fil-forge/libforge/identity"
 	"github.com/fil-forge/ucantone/did"
@@ -202,7 +201,7 @@ var serverCmd = &cli.Command{
 								"key": key.Resolver,
 								"web": resolver.Tiered{
 									wellKnownResolv,
-									resolver.NewCached(httpResolv, time.Hour*3),
+									httpResolv,
 								},
 							}),
 						),

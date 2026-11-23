@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/fil-forge/go-ipni-tools/pkg/metadata"
 	"github.com/fil-forge/go-ipni-tools/pkg/notifier"
@@ -69,7 +68,7 @@ var awsCmd = &cli.Command{
 						"key": key.Resolver,
 						"web": resolver.Tiered{
 							wellKnownResolv,
-							resolver.NewCached(httpResolv, time.Hour*3),
+							httpResolv,
 						},
 					}),
 				),
