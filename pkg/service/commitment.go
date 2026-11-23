@@ -76,19 +76,34 @@ func signerPeerID(ctx context.Context, resolver did.Resolver, inv ucan.Invocatio
 // host the DID names. That host is where the issuer's DID document comes from,
 // so a claim served there is vouched for by whoever controls the identity, and
 // a claim served elsewhere is not. Other DID methods name no host and pass.
+//
+// A port left out on either side is the default for the claim URL's scheme, so
+// did:web:node.example and did:web:node.example%3A443 both match a claim
+// served from https://node.example.
 func checkClaimOrigin(issuer did.DID, claimURL *url.URL) error {
 	if issuer.Method() != web.Method {
 		return nil
 	}
-	host, _, _ := strings.Cut(issuer.Identifier(), ":")
-	host = strings.ReplaceAll(host, "%3A", ":")
-
-	served := claimURL.Host
-	if port := claimURL.Port(); (claimURL.Scheme == "https" && port == "443") || (claimURL.Scheme == "http" && port == "80") {
-		served = claimURL.Hostname()
+	named, _, _ := strings.Cut(issuer.Identifier(), ":")
+	host, port, _ := strings.Cut(strings.ReplaceAll(named, "%3A", ":"), ":")
+	if port == "" {
+		port = defaultPort(claimURL.Scheme)
 	}
-	if !strings.EqualFold(host, served) {
+
+	servedPort := claimURL.Port()
+	if servedPort == "" {
+		servedPort = defaultPort(claimURL.Scheme)
+	}
+	if !strings.EqualFold(host, claimURL.Hostname()) || port != servedPort {
 		return fmt.Errorf("%w: %s serves a claim issued by %s", ErrClaimOrigin, claimURL.Host, issuer)
 	}
 	return nil
+}
+
+// defaultPort is the port a URL of the given scheme uses when it names none.
+func defaultPort(scheme string) string {
+	if scheme == "http" {
+		return "80"
+	}
+	return "443"
 }

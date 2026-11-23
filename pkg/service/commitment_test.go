@@ -146,6 +146,9 @@ func TestCheckClaimOrigin(t *testing.T) {
 		{name: "the host the did:web names", issuer: "did:web:node.example", url: "https://node.example/claim/x"},
 		{name: "the host is compared without case", issuer: "did:web:Node.Example", url: "https://node.example/claim/x"},
 		{name: "the default https port", issuer: "did:web:node.example", url: "https://node.example:443/claim/x"},
+		{name: "the default https port in the did:web", issuer: "did:web:node.example%3A443", url: "https://node.example/claim/x"},
+		{name: "the default https port on both sides", issuer: "did:web:node.example%3A443", url: "https://node.example:443/claim/x"},
+		{name: "the default http port in the did:web", issuer: "did:web:piri-0%3A80", url: "http://piri-0/claim/x"},
 		{name: "a port in the did:web", issuer: "did:web:piri-0%3A3000", url: "http://piri-0:3000/claim/x"},
 		{name: "a did:web with a path", issuer: "did:web:node.example:nodes:one", url: "https://node.example/claim/x"},
 		{name: "another host", issuer: "did:web:node.example", url: "https://other.example/claim/x", wantErr: true},
@@ -180,6 +183,24 @@ func TestCacheLocationCommitment(t *testing.T) {
 			Return(nil)
 
 		err := Cache(t.Context(), node.resolver, nil, claims, provIndex, addrs, claim, container.New())
+		require.NoError(t, err)
+	})
+
+	t.Run("a did:key node needs no claim endpoint", func(t *testing.T) {
+		node := multikey.KeyIssuer(newKey(t))
+		claim := locationCommitment(t, node)
+		addrs := []ma.Multiaddr{
+			testutil.Must(ma.NewMultiaddr("/dns/node.example/https/http-path/" + url.PathEscape("blob/{blob}")))(t),
+		}
+
+		claims := contentclaims.NewMockContentClaimsService(t)
+		claims.EXPECT().Cache(mock.Anything, claim).Return(nil)
+		provIndex := providerindex.NewMockProviderIndex(t)
+		provIndex.EXPECT().
+			Cache(mock.Anything, peer.AddrInfo{ID: keyPeerID(t, node), Addrs: addrs}, mock.Anything, mock.Anything, mock.Anything).
+			Return(nil)
+
+		err := Cache(t.Context(), key.Resolver, nil, claims, provIndex, addrs, claim, container.New())
 		require.NoError(t, err)
 	})
 

@@ -28,6 +28,7 @@ import (
 	ucanlib "github.com/fil-forge/libforge/ucan"
 	"github.com/fil-forge/ucantone/did"
 	"github.com/fil-forge/ucantone/did/key"
+	"github.com/fil-forge/ucantone/did/web"
 	"github.com/fil-forge/ucantone/ucan"
 	"github.com/fil-forge/ucantone/ucan/container"
 	"github.com/fil-forge/ucantone/validator"
@@ -526,12 +527,16 @@ func cacheLocationCommitment(ctx context.Context, resolver did.Resolver, claims 
 	}
 	provider := peer.AddrInfo{ID: peerID, Addrs: addrs}
 
-	claimURL, err := fetchClaimURL(provider, claim.Link())
-	if err != nil {
-		return fmt.Errorf("building claim URL: %w", err)
-	}
-	if err := checkClaimOrigin(claim.Issuer(), claimURL); err != nil {
-		return err
+	// Only a did:web names a host its claims must be served from, so only then
+	// does the node have to advertise a claim endpoint.
+	if claim.Issuer().Method() == web.Method {
+		claimURL, err := fetchClaimURL(provider, claim.Link())
+		if err != nil {
+			return fmt.Errorf("building claim URL: %w", err)
+		}
+		if err := checkClaimOrigin(claim.Issuer(), claimURL); err != nil {
+			return err
+		}
 	}
 
 	var args assert.LocationArguments
