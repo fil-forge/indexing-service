@@ -84,14 +84,11 @@ func checkClaimOrigin(issuer did.DID, claimURL *url.URL) error {
 	if issuer.Method() != web.Method {
 		return nil
 	}
-	// The host is the identifier's first segment, with the colon before a port
-	// percent-encoded.
-	named, _, _ := strings.Cut(issuer.Identifier(), ":")
-	named, err := url.PathUnescape(named)
+	named, err := web.Location(issuer)
 	if err != nil {
 		return fmt.Errorf("%w: %s does not name a host: %v", ErrClaimOrigin, issuer, err)
 	}
-	host, port, _ := strings.Cut(named, ":")
+	host, port := named.Hostname(), named.Port()
 	if port == "" {
 		port = defaultPort(claimURL.Scheme)
 	}
