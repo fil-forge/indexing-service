@@ -10,6 +10,7 @@ import (
 	assertcaps "github.com/fil-forge/libforge/commands/assert"
 	"github.com/fil-forge/libforge/digestutil"
 	"github.com/fil-forge/ucantone/did"
+	"github.com/fil-forge/ucantone/did/web"
 	"github.com/fil-forge/ucantone/ucan"
 	"github.com/fil-forge/ucantone/ucan/container"
 	"github.com/fil-forge/ucantone/ucan/invocation"
@@ -61,9 +62,12 @@ var queryCmd = &cli.Command{
 			return fmt.Errorf("parsing service URL: %w", err)
 		}
 
-		serviceDID, err := did.Parse(fmt.Sprintf("did:web:%s", serviceURL.Hostname()))
+		// The indexer is addressed as the did:web of its URL: the host, and
+		// the port when it is not the scheme's default. A local indexer may
+		// be served over http.
+		serviceDID, err := web.NewInsecure(*serviceURL)
 		if err != nil {
-			return fmt.Errorf("parsing service DID: %w", err)
+			return fmt.Errorf("deriving service DID: %w", err)
 		}
 
 		// if telemetry is enabled for this query, setup the provider
